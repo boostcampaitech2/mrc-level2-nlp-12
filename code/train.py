@@ -28,6 +28,7 @@ from arguments import (
     DataTrainingArguments,
 )
 
+import wandb
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ def main():
     # [참고] argument를 manual하게 수정하고 싶은 경우에 아래와 같은 방식을 사용할 수 있습니다
     # training_args.per_device_train_batch_size = 4
     # print(training_args.per_device_train_batch_size)
-
+    training_args.eval_steps = 250
     print(f"model is from {model_args.model_name_or_path}")
     print(f"data is from {data_args.dataset_name}")
 
@@ -141,7 +142,7 @@ def run_mrc(
             stride=data_args.doc_stride,
             return_overflowing_tokens=True,
             return_offsets_mapping=True,
-            #return_token_type_ids=False, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
+            # return_token_type_ids=False, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
             padding="max_length" if data_args.pad_to_max_length else False,
         )
 
@@ -233,7 +234,7 @@ def run_mrc(
             stride=data_args.doc_stride,
             return_overflowing_tokens=True,
             return_offsets_mapping=True,
-            #return_token_type_ids=False, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
+            # return_token_type_ids=False, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
             padding="max_length" if data_args.pad_to_max_length else False,
         )
 
@@ -311,7 +312,7 @@ def run_mrc(
         return metric.compute(predictions=p.predictions, references=p.label_ids)
 
     # Trainer 초기화
-    trainer = QuestionAnsweringTrainer( 
+    trainer = QuestionAnsweringTrainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset if training_args.do_train else None,
@@ -366,4 +367,6 @@ def run_mrc(
 
 
 if __name__ == "__main__":
+
+    wandb.init(project="test", entity="bc-ai-it-mrc")
     main()

@@ -31,7 +31,7 @@ class SparseRetrieval:
     def __init__(
         self,
         tokenize_fn,
-        data_path: Optional[str] = "../data/",
+        data_path: Optional[str] = "/opt/ml/data/",
         context_path: Optional[str] = "wikipedia_documents.json",
     ) -> NoReturn:
 
@@ -68,9 +68,7 @@ class SparseRetrieval:
 
         # Transform by vectorizer
         self.tfidfv = TfidfVectorizer(
-            tokenizer=tokenize_fn,
-            ngram_range=(1, 2),
-            max_features=50000,
+            tokenizer=tokenize_fn, ngram_range=(1, 2), max_features=50000,
         )
 
         self.p_embedding = None  # get_sparse_embedding()로 생성합니다
@@ -394,7 +392,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="")
     parser.add_argument(
-        "--dataset_name", metavar="./data/train_dataset", type=str, help=""
+        "--dataset_name", metavar="/opt/ml/data/train_dataset", type=str, help=""
     )
     parser.add_argument(
         "--model_name_or_path",
@@ -402,7 +400,7 @@ if __name__ == "__main__":
         type=str,
         help="",
     )
-    parser.add_argument("--data_path", metavar="./data", type=str, help="")
+    parser.add_argument("--data_path", metavar="/opt/ml/data", type=str, help="")
     parser.add_argument(
         "--context_path", metavar="wikipedia_documents", type=str, help=""
     )
@@ -423,10 +421,7 @@ if __name__ == "__main__":
 
     from transformers import AutoTokenizer
 
-    tokenizer = AutoTokenizer.from_pretrained(
-        args.model_name_or_path,
-        use_fast=False,
-    )
+    tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, use_fast=False,)
 
     retriever = SparseRetrieval(
         tokenize_fn=tokenizer.tokenize,
