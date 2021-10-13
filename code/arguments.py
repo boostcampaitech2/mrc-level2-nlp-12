@@ -14,6 +14,12 @@ class ModelArguments:
             "help": "Path to pretrained model or model identifier from huggingface.co/models"
         },
     )
+    best_model: str = field(
+        default="./models/best_model",
+        metadata={
+            "help": "Path to best model"
+        },
+    )
     config_name: Optional[str] = field(
         default=None,
         metadata={
@@ -26,6 +32,7 @@ class ModelArguments:
             "help": "Pretrained tokenizer name or path if not the same as model_name"
         },
     )
+    
 
 
 @dataclass

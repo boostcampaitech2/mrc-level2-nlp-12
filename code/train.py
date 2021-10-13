@@ -8,7 +8,6 @@ import dataclasses
 from datasets import load_metric, load_from_disk, Dataset, DatasetDict
 
 from transformers import AutoConfig, AutoModelForQuestionAnswering, AutoTokenizer
-
 from transformers import (
     DataCollatorWithPadding,
     EvalPrediction,
@@ -16,6 +15,7 @@ from transformers import (
     TrainingArguments,
     set_seed,
 )
+from transformers.trainer_utils import IntervalStrategy
 
 from tokenizers import Tokenizer
 from tokenizers.models import WordPiece
@@ -51,6 +51,7 @@ def main():
     training_args.eval_steps = 250
     training_args.save_total_limit=3
     training_args.load_best_model_at_end=True
+    training_args.metric_for_best_model = 'em'
 
     # wandb 설정
     # entity는 wandb login으로 자동 설정됩니다. entity를 변경하고 싶으시면 relogin하면 됩니다!
@@ -306,7 +307,7 @@ def run_mrc(
             features=features,
             predictions=predictions,
             max_answer_length=data_args.max_answer_length,
-            output_dir="./outputs/train_dataset",
+            output_dir="./outputs/train_dataset", # train & eval 시 output_dir 중복으로 fix mapping. 추후 논의 (parser 사용 등)
         )
         # Metric을 구할 수 있도록 Format을 맞춰줍니다.
         formatted_predictions = [
@@ -351,8 +352,8 @@ def run_mrc(
         else:
             checkpoint = None
         train_result = trainer.train(resume_from_checkpoint=checkpoint)
-        #trainer.save_model()  # Saves the tokenizer too for easy upload
-        model.save_pretrained('./models/best_model')  # Saves model only
+        trainer.save_model(model_args.best_model)  # Saves the tokenizer too for easy upload
+        #model.save_pretrained('./models/best_model')  # Saves only model
 
         metrics = train_result.metrics
         metrics["train_samples"] = len(train_dataset)
