@@ -38,7 +38,15 @@ class QuestionAnsweringTrainer(Trainer):
         # 그리고 나중에 post_process_function 함수로 후처리를 할 때 이용됨
         self.post_process_function = post_process_function
 
-    def evaluate(self, eval_dataset=None, eval_examples=None, ignore_keys=None):
+    def evaluate(
+        self,
+        eval_dataset=None,
+        eval_examples=None,
+        ignore_keys=None,
+        metric_key_prefix="eval",
+    ):
+        self._memory_tracker.start()
+
         eval_dataset = self.eval_dataset if eval_dataset is None else eval_dataset
         eval_dataloader = self.get_eval_dataloader(eval_dataset)
         eval_examples = self.eval_examples if eval_examples is None else eval_examples
@@ -47,7 +55,7 @@ class QuestionAnsweringTrainer(Trainer):
         compute_metrics = self.compute_metrics
         self.compute_metrics = None
         try:
-            output = self.prediction_loop(
+            output = self.evaluation_loop(
                 eval_dataloader,
                 description="Evaluation",
                 # metric이 없으면 예측값을 모으는 이유가 없으므로 아래의 코드를 따르게 됩니다.
@@ -70,6 +78,11 @@ class QuestionAnsweringTrainer(Trainer):
             )
             metrics = self.compute_metrics(eval_preds)
 
+            # Prefix all keys with metric_key_prefix + '_'
+            for key in list(metrics.keys()):
+                if not key.startswith(f"{metric_key_prefix}_"):
+                    metrics[f"{metric_key_prefix}_{key}"] = metrics.pop(key)
+
             self.log(metrics)
         else:
             metrics = {}
@@ -81,6 +94,9 @@ class QuestionAnsweringTrainer(Trainer):
         self.control = self.callback_handler.on_evaluate(
             self.args, self.state, self.control, metrics
         )
+
+        self._memory_tracker.stop_and_update_metrics(metrics)
+
         return metrics
 
     def predict(self, test_dataset, test_examples, ignore_keys=None):
@@ -91,7 +107,7 @@ class QuestionAnsweringTrainer(Trainer):
         compute_metrics = self.compute_metrics
         self.compute_metrics = None
         try:
-            output = self.prediction_loop(
+            output = self.evaluation_loop(
                 test_dataloader,
                 description="Evaluation",
                 # metric이 없으면 예측값을 모으는 이유가 없으므로 아래의 코드를 따르게 됩니다.
@@ -114,4 +130,5 @@ class QuestionAnsweringTrainer(Trainer):
         predictions = self.post_process_function(
             test_examples, test_dataset, output.predictions, self.args
         )
+
         return predictions
