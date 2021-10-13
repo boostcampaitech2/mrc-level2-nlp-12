@@ -6,31 +6,29 @@ import torch
 from typing import List, Callable, NoReturn, NewType, Any
 import dataclasses
 from datasets import load_metric, load_from_disk, Dataset, DatasetDict
-
 from transformers import AutoConfig, AutoModelForQuestionAnswering, AutoTokenizer
-
 from transformers import (
     DataCollatorWithPadding,
     EvalPrediction,
     HfArgumentParser,
     TrainingArguments,
     set_seed,
-    EarlyStoppingCallback
+    EarlyStoppingCallback,
+    Trainer,
+    IntervalStrategy
 )
 
 from tokenizers import Tokenizer
 from tokenizers.models import WordPiece
-
 from utils_qa import postprocess_qa_predictions, check_no_error
 from trainer_qa import QuestionAnsweringTrainer
 from retrieval import SparseRetrieval
-
 from arguments import (
     ModelArguments,
     DataTrainingArguments,
 )
-
 from wandb import wandb
+from utils import *
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +96,7 @@ def main():
     # keep train params 추가
     if training_args.do_train:
         training_args.load_best_model_at_end = True
-        training_args.metric_for_best_model = 'loss'
+        # training_args.metric_for_best_model = 'loss'
 
         training_args.logging_dir = './logs'
         training_args.logging_steps = 300
@@ -111,8 +109,8 @@ def main():
 
     # keep eval params 추가
     if training_args.do_eval:
-        training_args.evaluation_strategy = 'steps'
-        # training_args.eval_steps = 100,
+        training_args.evaluation_strategy = IntervalStrategy.STEPS
+        # training_args.eval_steps = int(100),
         training_args.per_device_eval_batch_size = 8
         # training_args.eval_accumulation_steps = 3 # keep 메모리 부족 시
 
@@ -308,7 +306,7 @@ def run_mrc(
         tokenizer, pad_to_multiple_of=8 if training_args.fp16 else None
     )
 
-    # keep 사후처리 =>
+    # keep 사후처리 => 정답 후보군 필터링
     def post_processing_function(examples, features, predictions, training_args):
         # Post-processing: start logits과 end logits을 original context의 정답과 match시킵니다.
         predictions = postprocess_qa_predictions(
@@ -346,7 +344,7 @@ def run_mrc(
     print()
 
     # custom trainer
-    trainer = QuestionAnsweringTrainer( 
+    trainer = QuestionAnsweringTrainer(
         model=model,
         args=training_args,
         # train_dataset=train_dataset if training_args.do_train else None,
@@ -358,9 +356,9 @@ def run_mrc(
         data_collator=data_collator,
         post_process_function=post_processing_function,
         compute_metrics=custom_metrics,
-        callbacks=[
-            EarlyStoppingCallback(early_stopping_patience=3)
-        ]
+        # callbacks=[
+        #     EarlyStoppingCallback(early_stopping_patience=3)
+        # ]
     )
 
     # train
@@ -371,6 +369,16 @@ def run_mrc(
             checkpoint = model_args.model_name_or_path
         else:
             checkpoint = None
+
+        # keep 하이퍼 파라미터 서치
+        # best_run = trainer.hyperparameter_search(
+        #     direction='maximize',
+        #     hp_space=ray_hp_space,
+        #     backend='ray',
+        #     n_trials=8
+        # )
+        # print(best_run)
+
         train_result = trainer.train(
             # keep 모델 캐시 차단
             # resume_from_checkpoint=checkpoint
@@ -399,6 +407,7 @@ def run_mrc(
     if training_args.do_eval:
         logger.info("***** Evaluate *****")
         metrics = trainer.evaluate()
+        print(metrics)
         metrics["eval_samples"] = len(eval_dataset)
         trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)

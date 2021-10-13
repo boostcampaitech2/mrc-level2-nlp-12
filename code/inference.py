@@ -122,6 +122,9 @@ def run_sparse_retrieval(
     )
     retriever.get_sparse_embedding()
 
+
+
+    # keep faiss 패키지 사용
     if data_args.use_faiss:
         retriever.build_faiss(num_clusters=data_args.num_clusters)
         df = retriever.retrieve_faiss(
