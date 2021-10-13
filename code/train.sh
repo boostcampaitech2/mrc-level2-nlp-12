@@ -1,13 +1,30 @@
-python train.py --output_dir \
-        ./models/train_dataset \
+python train.py \
+        --model_name_or_path klue/roberta-large \
+        --output_dir ./models/klue-roberta-large-valila \
         --do_train \
         --do_eval \
         --evaluation_strategy steps \
         --logging_steps 100 \
         --eval_step 250 \
         --overwrite_cache \
-        --overwrite_output_dir 
+        --overwrite_output_dir \
+        --preprocessing_num_workers 4 \
+        --run_name "[김재현]-klue/roberta-large-valila" \
 
+python train.py \
+        --model_name_or_path klue/roberta-large \
+        --output_dir ./models/klue-roberta-large-warmup \
+        --do_train \
+        --do_eval \
+        --evaluation_strategy steps \
+        --logging_steps 100 \
+        --eval_step 250 \
+        --overwrite_cache \
+        --overwrite_output_dir \
+        --preprocessing_num_workers 4 \
+        --warmup_steps 400 \
+        --run_name "[김재현]-klue/roberta-large-warmup" \
+        # --model_name_or_path klue/roberta-large \
 
 # optional arguments:
 #   -h, --help            show this help message and exit

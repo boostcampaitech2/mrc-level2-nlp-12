@@ -29,9 +29,13 @@ if is_torch_tpu_available():
 
 # Huggingface의 Trainer를 상속받아 QuestionAnswering을 위한 Trainer를 생성합니다.
 class QuestionAnsweringTrainer(Trainer):
+    """ QA fine-tuning을 할 수 있게 하는 Custom Trainer """
+
     def __init__(self, *args, eval_examples=None, post_process_function=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.eval_examples = eval_examples
+        # eval_examples를 쓰는 이유 : 기존의 dataset은 전처리를 진행하고 example은 전처리를 진행하지 않음
+        # 그리고 나중에 post_process_function 함수로 후처리를 할 때 이용됨
         self.post_process_function = post_process_function
 
     def evaluate(self, eval_dataset=None, eval_examples=None, ignore_keys=None):
