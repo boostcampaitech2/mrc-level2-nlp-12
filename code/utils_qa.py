@@ -77,12 +77,13 @@ def postprocess_qa_predictions(
         examples: 전처리 되지 않은 데이터셋 (see the main script for more information).
         features: 전처리가 진행된 데이터셋 (see the main script for more information).
         predictions (:obj:`Tuple[np.ndarray, np.ndarray]`):
-            모델의 예측값 :start logits과 the end logits을 나타내는 two arrays              첫번째 차원은 :obj:`features`의 element와 갯수가 맞아야함.
+            모델의 예측값 :start logits과 the end logits을 나타내는 two arrays
+            첫번째 차원은 :obj:`features`의 element와 갯수가 맞아야함.
         version_2_with_negative (:obj:`bool`, `optional`, defaults to :obj:`False`):
             정답이 없는 데이터셋이 포함되어있는지 여부를 나타냄
-        n_best_size (:obj:`int`, `optional`, defaults to 20):
+        n_best_size (:obj:`int`, `optional`, defaults to 20):       # keep 정답 후보군
             답변을 찾을 때 생성할 n-best prediction 총 개수
-        max_answer_length (:obj:`int`, `optional`, defaults to 30):
+        max_answer_length (:obj:`int`, `optional`, defaults to 30): # keep 정답 max length
             생성할 수 있는 답변의 최대 길이
         null_score_diff_threshold (:obj:`float`, `optional`, defaults to 0):
             null 답변을 선택하는 데 사용되는 threshold
@@ -91,7 +92,7 @@ def postprocess_qa_predictions(
             the null answer for an example giving several features is the minimum of the scores for the null answer on
             each feature: all features must be aligned on the fact they `want` to predict a null answer).
             Only useful when :obj:`version_2_with_negative` is :obj:`True`.
-        output_dir (:obj:`str`, `optional`):
+        output_dir (:obj:`str`, `optional`): # keep outputs/train_dataset
             아래의 값이 저장되는 경로
             dictionary : predictions, n_best predictions (with their scores and logits) if:obj:`version_2_with_negative=True`,
             dictionary : the scores differences between best and null answers
@@ -100,6 +101,12 @@ def postprocess_qa_predictions(
         is_world_process_zero (:obj:`bool`, `optional`, defaults to :obj:`True`):
             이 프로세스가 main process인지 여부(logging/save를 수행해야 하는지 여부를 결정하는 데 사용됨)
     """
+
+
+    print('--- First Predictions ---')
+    print(predictions)
+
+
     assert (
         len(predictions) == 2
     ), "`predictions` should be a tuple with two elements (start_logits, end_logits)."
@@ -116,8 +123,8 @@ def postprocess_qa_predictions(
         features_per_example[example_id_to_index[feature["example_id"]]].append(i)
 
     # prediction, nbest에 해당하는 OrderedDict 생성합니다.
-    all_predictions = collections.OrderedDict()
-    all_nbest_json = collections.OrderedDict()
+    all_predictions = collections.OrderedDict() # keep 최종 1개 정답
+    all_nbest_json = collections.OrderedDict()  # keep 정답 후보군
     if version_2_with_negative:
         scores_diff_json = collections.OrderedDict()
 
@@ -130,16 +137,16 @@ def postprocess_qa_predictions(
     # 전체 example들에 대한 main Loop
     for example_index, example in enumerate(tqdm(examples)):
         # 해당하는 현재 example index
-        feature_indices = features_per_example[example_index]
+        feature_indices = features_per_example[example_index] # keep example : feature
 
         min_null_prediction = None
         prelim_predictions = []
 
         # 현재 example에 대한 모든 feature 생성합니다.
         for feature_index in feature_indices:
-            # 각 featureure에 대한 모든 prediction을 가져옵니다.
-            start_logits = all_start_logits[feature_index]
-            end_logits = all_end_logits[feature_index]
+            # 각 feature에 대한 모든 prediction을 가져옵니다.
+            start_logits = all_start_logits[feature_index] # keep from predictions
+            end_logits = all_end_logits[feature_index]     # keep from predictions
             # logit과 original context의 logit을 mapping합니다.
             offset_mapping = features[feature_index]["offset_mapping"]
             # Optional : `token_is_max_context`, 제공되는 경우 현재 기능에서 사용할 수 있는 max context가 없는 answer를 제거합니다
@@ -161,12 +168,10 @@ def postprocess_qa_predictions(
                 }
 
             # `n_best_size`보다 큰 start and end logits을 살펴봅니다.
-            start_indexes = np.argsort(start_logits)[
-                -1 : -n_best_size - 1 : -1
-            ].tolist()
-
+            start_indexes = np.argsort(start_logits)[-1 : -n_best_size - 1 : -1].tolist()
             end_indexes = np.argsort(end_logits)[-1 : -n_best_size - 1 : -1].tolist()
 
+            # keep 미리 설정한 정답 조건들에 부합하는지 확인
             for start_index in start_indexes:
                 for end_index in end_indexes:
                     # out-of-scope answers는 고려하지 않습니다.
@@ -192,10 +197,10 @@ def postprocess_qa_predictions(
                     prelim_predictions.append(
                         {
                             "offsets": (
-                                offset_mapping[start_index][0],
-                                offset_mapping[end_index][1],
+                                offset_mapping[start_index][0], # (s, e)
+                                offset_mapping[end_index][1],   # (s, e)
                             ),
-                            "score": start_logits[start_index] + end_logits[end_index],
+                            "score": start_logits[start_index] + end_logits[end_index], # keep 스코어 = 시작 logit + 종료 logit
                             "start_logit": start_logits[start_index],
                             "end_logit": end_logits[end_index],
                         }
@@ -210,6 +215,10 @@ def postprocess_qa_predictions(
         predictions = sorted(
             prelim_predictions, key=lambda x: x["score"], reverse=True
         )[:n_best_size]
+
+        print()
+        print('--- Best Predictions ---')
+        print(predictions)
 
         # 낮은 점수로 인해 제거된 경우 minimum null prediction을 다시 추가합니다.
         if version_2_with_negative and not any(
@@ -227,12 +236,11 @@ def postprocess_qa_predictions(
         if len(predictions) == 0 or (
             len(predictions) == 1 and predictions[0]["text"] == ""
         ):
-
             predictions.insert(
                 0, {"text": "empty", "start_logit": 0.0, "end_logit": 0.0, "score": 0.0}
             )
 
-        # 모든 점수의 소프트맥스를 계산합니다(we do it with numpy to stay independent from torch/tf in this file, using the LogSumExp trick).
+        # keep logits to probs by softmax
         scores = np.array([pred.pop("score") for pred in predictions])
         exp_scores = np.exp(scores - np.max(scores))
         probs = exp_scores / exp_scores.sum()
@@ -258,6 +266,8 @@ def postprocess_qa_predictions(
                 - best_non_null_pred["end_logit"]
             )
             scores_diff_json[example["id"]] = float(score_diff)  # JSON-serializable 가능
+            
+            # keep 정답 없는 경우의 스코어가 높은 경우
             if score_diff > null_score_diff_threshold:
                 all_predictions[example["id"]] = ""
             else:
