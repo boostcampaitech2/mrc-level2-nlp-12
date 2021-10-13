@@ -115,6 +115,8 @@ def main():
 
     # if training_args.do_train or training_args.do_eval:
     if training_args.do_train and training_args.do_eval:
+        print(datasets)
+        exit()
         run_mrc(data_args, training_args, model_args, datasets, tokenizer, model)
 
 
