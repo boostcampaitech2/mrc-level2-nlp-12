@@ -73,8 +73,12 @@ class SparseRetrieval:
             max_features=50000,
         )
 
-        self.p_embedding = self.get_sparse_embedding()  # get_sparse_embedding()로 생성합니다
+        self.p_embedding = None  # get_sparse_embedding()로 생성합니다
         self.indexer = None  # build_faiss()로 생성합니다.
+
+        # keep init files
+        self.get_sparse_embedding()
+        self.build_faiss()
 
     def get_sparse_embedding(self) -> NoReturn:
 
@@ -87,10 +91,11 @@ class SparseRetrieval:
 
         # Pickle을 저장합니다.
         pickle_name = f"sparse_embedding.bin"
-        tfidfv_name = f"tfidv.bin"
+        tfidfv_name = f"tfidfv.bin"
         emd_path = os.path.join(self.data_path, pickle_name)
         tfidfv_path = os.path.join(self.data_path, tfidfv_name)
 
+        # keep 새로운 embedding / tfidfv 사용하고 싶다면 기존 파일 먼저 삭제해야 함
         if os.path.isfile(emd_path) and os.path.isfile(tfidfv_path):
             with open(emd_path, "rb") as file:
                 self.p_embedding = pickle.load(file)
@@ -163,6 +168,7 @@ class SparseRetrieval:
             다수의 Query를 받는 경우 -> pd.DataFrame: [description]
 
         Note:
+            # keep point
             다수의 Query를 받는 경우,
                 Ground Truth가 있는 Query (train/valid) -> 기존 Ground Truth Passage를 같이 반환합니다.
                 Ground Truth가 없는 Query (test) -> Retrieval한 Passage만 반환합니다.
@@ -209,7 +215,8 @@ class SparseRetrieval:
 
             cqas = pd.DataFrame(total)
             return cqas
-
+    
+    # keep 입력된 질문 쿼리와 유사성을 가지는 passage 반환
     def get_relevant_doc(self, query: str, k: Optional[int] = 1) -> Tuple[List, List]:
 
         """
@@ -229,10 +236,11 @@ class SparseRetrieval:
         ), "오류가 발생했습니다. 이 오류는 보통 query에 vectorizer의 vocab에 없는 단어만 존재하는 경우 발생합니다."
 
         with timer("query ex search"):
-            result = query_vec * self.p_embedding.T
+            result = query_vec * self.p_embedding.T # keep 쿼리 벡터 (dot) passage embedding => 모든 wiki text 와의 유사도 계산
         if not isinstance(result, np.ndarray):
             result = result.toarray()
 
+        # keep 정렬 및 top-k passage 선정
         sorted_result = np.argsort(result.squeeze())[::-1]
         doc_score = result.squeeze()[sorted_result].tolist()[:k]
         doc_indices = sorted_result.tolist()[:k]
