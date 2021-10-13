@@ -96,7 +96,7 @@ def main():
     # keep train params 추가
     if training_args.do_train:
         training_args.load_best_model_at_end = True
-        # training_args.metric_for_best_model = 'loss'
+        training_args.metric_for_best_model = 'em' # with or without prefix '-eval'
 
         training_args.logging_dir = './logs'
         training_args.logging_steps = 300
@@ -110,7 +110,6 @@ def main():
     # keep eval params 추가
     if training_args.do_eval:
         training_args.evaluation_strategy = IntervalStrategy.STEPS
-        # training_args.eval_steps = int(100),
         training_args.per_device_eval_batch_size = 8
         # training_args.eval_accumulation_steps = 3 # keep 메모리 부족 시
 
@@ -356,9 +355,9 @@ def run_mrc(
         data_collator=data_collator,
         post_process_function=post_processing_function,
         compute_metrics=custom_metrics,
-        # callbacks=[
-        #     EarlyStoppingCallback(early_stopping_patience=3)
-        # ]
+        callbacks=[
+            EarlyStoppingCallback(early_stopping_patience=3)
+        ]
     )
 
     # train

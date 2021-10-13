@@ -74,6 +74,8 @@ class QuestionAnsweringTrainer(Trainer):
                 eval_examples, eval_dataset, output.predictions, self.args
             )
             metrics = self.compute_metrics(eval_preds)
+            metrics['eval_em'] = metrics['exact_match']
+            del metrics['exact_match']
             self.log(metrics)
         else:
             metrics = {}
