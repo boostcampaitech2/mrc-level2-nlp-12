@@ -74,10 +74,7 @@ class QuestionAnsweringTrainer(Trainer):
             # Prefix all keys with metric_key_prefix + '_'
             for key in list(metrics.keys()):
                 if not key.startswith(f"{metric_key_prefix}_"):
-                    if key == f"exact_match":
-                        metrics[f"{metric_key_prefix}_em"] = metrics.pop(key)
-                    else:    
-                        metrics[f"{metric_key_prefix}_{key}"] = metrics.pop(key)
+                    metrics[f"{metric_key_prefix}_{key}"] = metrics.pop(key)
 
             self.log(metrics)
         else:

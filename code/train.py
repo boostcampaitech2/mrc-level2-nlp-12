@@ -51,7 +51,8 @@ def main():
     training_args.eval_steps = 250
     training_args.save_total_limit=3
     training_args.load_best_model_at_end=True
-    training_args.metric_for_best_model = 'em'
+    training_args.metric_for_best_model="eval_exact_match"
+    training_args.greater_is_better=True
 
     # wandb 설정
     # entity는 wandb login으로 자동 설정됩니다. entity를 변경하고 싶으시면 relogin하면 됩니다!
