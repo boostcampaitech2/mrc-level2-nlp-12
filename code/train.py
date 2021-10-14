@@ -96,14 +96,15 @@ def main():
     # keep train params 추가
     if training_args.do_train:
         training_args.load_best_model_at_end = True
-        training_args.metric_for_best_model = 'em' # with or without prefix '-eval'
+        training_args.metric_for_best_model = 'em' # with or without prefix 'eval'
         training_args.greater_is_better = True
 
         training_args.logging_dir = './logs'
-        training_args.logging_steps = 300
-        training_args.save_steps = 300
-        training_args.save_total_limit = 10
-        training_args.gradient_checkpointing = True
+        training_args.logging_steps = 100
+        training_args.save_strategy = IntervalStrategy.STEPS
+        training_args.save_steps = 100
+        training_args.save_total_limit = 15
+        # training_args.gradient_checkpointing = True
         training_args.per_device_train_batch_size = 8
 
         training_args.reported_to = 'wandb'
@@ -402,8 +403,6 @@ def run_mrc(
             for key, value in sorted(train_result.metrics.items()):
                 logger.info(f"{key} = {value}")
                 writer.write(f"{key} = {value}\n")
-
-        print(trainer.state)
 
         trainer.state.save_to_json(
             os.path.join(training_args.output_dir, "trainer_state.json")
