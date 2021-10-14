@@ -97,6 +97,7 @@ def main():
     if training_args.do_train:
         training_args.load_best_model_at_end = True
         training_args.metric_for_best_model = 'em' # with or without prefix '-eval'
+        training_args.greater_is_better = True
 
         training_args.logging_dir = './logs'
         training_args.logging_steps = 300
@@ -115,8 +116,8 @@ def main():
 
     # if training_args.do_train or training_args.do_eval:
     if training_args.do_train and training_args.do_eval:
-        print(datasets)
-        exit()
+        # print(datasets)
+        # exit()
         run_mrc(data_args, training_args, model_args, datasets, tokenizer, model)
 
 
@@ -385,7 +386,9 @@ def run_mrc(
             # resume_from_checkpoint=checkpoint
         )
 
-        trainer.save_model()
+        # trainer.save_model()
+        model.save_pretrained('./models/best_model')
+
         metrics = train_result.metrics
         metrics["train_samples"] = len(train_dataset)
         trainer.log_metrics("train", metrics)
@@ -400,18 +403,20 @@ def run_mrc(
                 logger.info(f"{key} = {value}")
                 writer.write(f"{key} = {value}\n")
 
+        print(trainer.state)
+
         trainer.state.save_to_json(
             os.path.join(training_args.output_dir, "trainer_state.json")
         )
 
     # eval
-    if training_args.do_eval:
-        logger.info("***** Evaluate *****")
-        metrics = trainer.evaluate()
-        print(metrics)
-        metrics["eval_samples"] = len(eval_dataset)
-        trainer.log_metrics("eval", metrics)
-        trainer.save_metrics("eval", metrics)
+    # if training_args.do_eval:
+    #     logger.info("***** Evaluate *****")
+    #     metrics = trainer.evaluate()
+    #     print(metrics)
+    #     metrics["eval_samples"] = len(eval_dataset)
+    #     trainer.log_metrics("eval", metrics)
+    #     trainer.save_metrics("eval", metrics)
 
     # keep 캐시 메모리 초기화
     del model, trainer, training_args

@@ -216,10 +216,6 @@ def postprocess_qa_predictions(
             prelim_predictions, key=lambda x: x["score"], reverse=True
         )[:n_best_size]
 
-        print()
-        print('--- Best Predictions ---')
-        print(predictions)
-
         # 낮은 점수로 인해 제거된 경우 minimum null prediction을 다시 추가합니다.
         if version_2_with_negative and not any(
             p["offsets"] == (0, 0) for p in predictions

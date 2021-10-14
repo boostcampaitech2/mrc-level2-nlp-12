@@ -120,9 +120,7 @@ def run_sparse_retrieval(
     retriever = SparseRetrieval(
         tokenize_fn=tokenize_fn, data_path=data_path, context_path=context_path
     )
-    retriever.get_sparse_embedding()
-
-
+    retriever.get_sparse_embedding() # keep init => class 내에 선언해 둠
 
     # keep faiss 패키지 사용
     if data_args.use_faiss:

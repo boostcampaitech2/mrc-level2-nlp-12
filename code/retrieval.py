@@ -70,7 +70,7 @@ class SparseRetrieval:
         self.tfidfv = TfidfVectorizer(
             tokenizer=tokenize_fn,
             ngram_range=(1, 2),
-            max_features=50000,
+            max_features=50000, # keep 최대 feature size => 특정 긴 문장에 feature 수가 급증하는 것을 방지
         )
 
         self.p_embedding = None  # get_sparse_embedding()로 생성합니다
@@ -104,7 +104,7 @@ class SparseRetrieval:
             print("Embedding pickle load.")
         else:
             print("Build passage embedding")
-            self.p_embedding = self.tfidfv.fit_transform(self.contexts)
+            self.p_embedding = self.tfidfv.fit_transform(self.contexts) # keep wiki text 기반으로 학습 init
             print(self.p_embedding.shape)
             with open(emd_path, "wb") as file:
                 pickle.dump(self.p_embedding, file)
@@ -428,6 +428,11 @@ if __name__ == "__main__":
     )  # train dev 를 합친 4192 개 질문에 대해 모두 테스트
     print("*" * 40, "query dataset", "*" * 40)
     print(full_ds)
+
+
+    # keep 아래 로직 copy to train.py
+
+
 
     from transformers import AutoTokenizer
 
