@@ -17,7 +17,7 @@ Question-Answering task와 관련된 'Trainer'의 subclass 코드 입니다.
 """
 
 from transformers import Trainer, is_datasets_available, is_torch_tpu_available
-from transformers.trainer_utils import PredictionOutput
+from transformers.trainer_utils import PredictionOutput, denumpify_detensorize
 
 
 if is_datasets_available():
@@ -67,6 +67,9 @@ class QuestionAnsweringTrainer(Trainer):
                 eval_examples, eval_dataset, output.predictions, self.args
             )
             metrics = self.compute_metrics(eval_preds)
+
+            # To be JSON-serializable, we need to remove numpy types or zero-d tensors
+            metrics = denumpify_detensorize(metrics)
 
             # Prefix all keys with metric_key_prefix + '_'
             for key in list(metrics.keys()):
