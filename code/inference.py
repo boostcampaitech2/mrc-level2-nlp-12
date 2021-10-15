@@ -93,6 +93,7 @@ def main():
         config=config,
     )
 
+    # keep do_predict 하고 싶으면 여기서 dataset 변경해줘야 함
     # True일 경우 : run passage retrieval
     if data_args.eval_retrieval:
         datasets = run_sparse_retrieval(

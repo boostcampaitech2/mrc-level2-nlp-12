@@ -102,9 +102,8 @@ def postprocess_qa_predictions(
             이 프로세스가 main process인지 여부(logging/save를 수행해야 하는지 여부를 결정하는 데 사용됨)
     """
 
-
-    print('--- First Predictions ---')
-    print(predictions)
+    # print('--- First Predictions ---')
+    # print(predictions)
 
 
     assert (
