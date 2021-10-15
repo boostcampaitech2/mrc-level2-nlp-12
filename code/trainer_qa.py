@@ -46,7 +46,12 @@ class QuestionAnsweringTrainer(Trainer):
         metric_key_prefix="eval",
     ):
         self._memory_tracker.start()
-
+        # TrainerMemoryTracker 클래스에 의해 동작
+        """ 
+            Train 클래스에 self._memory_tracker = TrainerMemoryTracker(self.args.skip_memory_metrics) 로 명시되어 있는데
+            args.skip_memory_metrics = True 로 디폴트가 되어있다.
+            CPU 및 GPU 메모리를 추적하는 도우미 클래스라고 한다.
+        """
         eval_dataset = self.eval_dataset if eval_dataset is None else eval_dataset
         eval_dataloader = self.get_eval_dataloader(eval_dataset)
         eval_examples = self.eval_examples if eval_examples is None else eval_examples
@@ -60,9 +65,12 @@ class QuestionAnsweringTrainer(Trainer):
                 description="Evaluation",
                 # metric이 없으면 예측값을 모으는 이유가 없으므로 아래의 코드를 따르게 됩니다.
                 # self.args.prediction_loss_only
-                prediction_loss_only=True if compute_metrics is None else None,
+                prediction_loss_only=True
+                if compute_metrics is None
+                else None,  # prediction_loss_only=True가 되면 output은 loss만 나온다. 근데 이때 compute_metric != None => False(default)으로 들어감
                 ignore_keys=ignore_keys,
             )
+            # output 은 predictions (logits), label_ids = (ground truth), metrics, num_samples 이렇게 존재
         finally:
             self.compute_metrics = compute_metrics
 
@@ -75,7 +83,7 @@ class QuestionAnsweringTrainer(Trainer):
         if self.post_process_function is not None and self.compute_metrics is not None:
             eval_preds = self.post_process_function(
                 eval_examples, eval_dataset, output.predictions, self.args
-            )
+            )  # EvalPrediction의 클래스를 가지고 있고 그 안에는 metric을 계산 할 수 있게 prediction과 reference(ground truth)를 가지고 있다.
             metrics = self.compute_metrics(eval_preds)
 
             # Prefix all keys with metric_key_prefix + '_'
@@ -107,7 +115,7 @@ class QuestionAnsweringTrainer(Trainer):
         compute_metrics = self.compute_metrics
         self.compute_metrics = None
         try:
-            output = self.evaluation_loop(
+            output = self.prediction_loop(
                 test_dataloader,
                 description="Evaluation",
                 # metric이 없으면 예측값을 모으는 이유가 없으므로 아래의 코드를 따르게 됩니다.
