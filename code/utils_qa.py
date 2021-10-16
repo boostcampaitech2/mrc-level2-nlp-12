@@ -47,14 +47,14 @@ def set_seed(seed: int = 42):
     Args:
         seed (:obj:`int`): The seed to set.
     """
-    random.seed(seed)
-    np.random.seed(seed)
+    random.seed(seed)                               # random seed 고정
+    np.random.seed(seed)                            # numpy seed 고정
     if is_torch_available():
-        torch.manual_seed(seed)
-        torch.cuda.manual_seed(seed)
-        torch.cuda.manual_seed_all(seed)  # if use multi-GPU
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
+        torch.manual_seed(seed)                     # pytorch seed 고정
+        torch.cuda.manual_seed(seed)                # GPU seed 고정
+        torch.cuda.manual_seed_all(seed)            # if use multi-GPU
+        torch.backends.cudnn.deterministic = True   # cudnn이 deterministic convolution algorithm 사용 (입력이 같으면 결과도 동일)
+        torch.backends.cudnn.benchmark = False      # cudnn이 가장 빠른 convolution algorithm 선정하지 못하게 함
 
 
 def postprocess_qa_predictions(
@@ -110,15 +110,15 @@ def postprocess_qa_predictions(
     ), f"Got {len(predictions[0])} predictions and {len(features)} features."
 
     # example과 mapping되는 feature 생성
-    example_id_to_index = {k: i for i, k in enumerate(examples["id"])}
+    example_id_to_index = {k: i for i, k in enumerate(examples["id"])}              # dict: key = example id, value = example idx
     features_per_example = collections.defaultdict(list)
     for i, feature in enumerate(features):
-        features_per_example[example_id_to_index[feature["example_id"]]].append(i)
+        features_per_example[example_id_to_index[feature["example_id"]]].append(i)  # dict: key = example_idx, value = feature의 idx 리스트
 
     # prediction, nbest에 해당하는 OrderedDict 생성합니다.
-    all_predictions = collections.OrderedDict()
-    all_nbest_json = collections.OrderedDict()
-    if version_2_with_negative:
+    all_predictions = collections.OrderedDict() # best prediction들 모아둘 list
+    all_nbest_json = collections.OrderedDict()  # nbest_prediction json
+    if version_2_with_negative:                 # 정답이 없는 데이터셋 존재시 생성
         scores_diff_json = collections.OrderedDict()
 
     # Logging.
@@ -132,8 +132,8 @@ def postprocess_qa_predictions(
         # 해당하는 현재 example index
         feature_indices = features_per_example[example_index]
 
-        min_null_prediction = None
-        prelim_predictions = []
+        min_null_prediction = None  # 정답이 없는 데이터셋 포함된 경우, 
+        prelim_predictions = []     # start, end 위치 가능한 조합 저장 리스트
 
         # 현재 example에 대한 모든 feature 생성합니다.
         for feature_index in feature_indices:
@@ -160,13 +160,15 @@ def postprocess_qa_predictions(
                     "end_logit": end_logits[0],
                 }
 
-            # `n_best_size`보다 큰 start and end logits을 살펴봅니다.
+            # `n_best_size`보다 큰 start and end logits을 살펴봅니다. 
+            # => 오름차순으로 n_best_size만큼 logit index 가져오기
             start_indexes = np.argsort(start_logits)[
                 -1 : -n_best_size - 1 : -1
             ].tolist()
 
             end_indexes = np.argsort(end_logits)[-1 : -n_best_size - 1 : -1].tolist()
 
+            # 불가능한 조합 제거
             for start_index in start_indexes:
                 for end_index in end_indexes:
                     # out-of-scope answers는 고려하지 않습니다.
@@ -322,6 +324,9 @@ def check_no_error(
     datasets: DatasetDict,
     tokenizer,
 ) -> Tuple[Any, int]:
+    """
+    check_no_error: last_checkpoint, tokenizer, max_length에 대해 오류가 없는지 확인하는 함수
+    """
 
     # last checkpoint 찾기.
     last_checkpoint = None
@@ -349,7 +354,7 @@ def check_no_error(
             "at https://huggingface.co/transformers/index.html#bigtable to find the model types that meet this "
             "requirement"
         )
-
+    # data argument의 max_length와 tokenizer의 max length 비교
     if data_args.max_seq_length > tokenizer.model_max_length:
         logger.warn(
             f"The max_seq_length passed ({data_args.max_seq_length}) is larger than the maximum length for the"
@@ -357,6 +362,7 @@ def check_no_error(
         )
     max_seq_length = min(data_args.max_seq_length, tokenizer.model_max_length)
 
+    # dataset 내 validation 존재여부 확인    
     if "validation" not in datasets:
         raise ValueError("--do_eval requires a validation dataset")
     return last_checkpoint, max_seq_length
