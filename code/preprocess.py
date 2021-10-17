@@ -5,6 +5,11 @@ from soynlp.normalizer import *
 from pykospacing import Spacing
 
 class Preprocess():
+    '''A class for preprocessing contexts
+    Args:
+        sents (list): context list from documents
+        langs (list): language list should be removed from sentence
+    '''
 
     PERMIT_REMOVE_LANGS = [
         'arabic',
@@ -17,7 +22,7 @@ class Preprocess():
         self.spacing = Spacing()
         self.langs = langs  # 제거 대상 언어
 
-        self.ord_list = []
+        self.ord_list = [] # 유니코드 범위 지정
         for lang in langs:
             lang = lang.lower()
             if lang not in Preprocess.PERMIT_REMOVE_LANGS:
@@ -33,6 +38,7 @@ class Preprocess():
         print('--- Removable Langs ---')
         print(self.ord_list)
 
+    # keep PreprocessingArgs control
     def proc_preprocessing(self):
         """
         A function for doing preprocess
@@ -50,7 +56,7 @@ class Preprocess():
         self.remove_repeat_char()
         self.clean_punc()
         self.remove_linesign()
-        self.remove_language()
+        # self.remove_language()
         self.remove_repeated_spacing()
         # self.spacing_sent() # spacing
 
@@ -280,6 +286,7 @@ class Preprocess():
                 preprocessed_sents.append(sent)
         self.sents = preprocessed_sents
 
+    # keep should be modified
     def remove_language(self):
         """
         A function for removing other langs
