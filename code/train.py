@@ -14,6 +14,7 @@ from transformers import (
     HfArgumentParser,
     TrainingArguments,
     set_seed,
+    IntervalStrategy
 )
 from transformers.trainer_utils import IntervalStrategy
 
@@ -49,7 +50,7 @@ def main():
     training_args.evaluation_strategy = IntervalStrategy.STEPS
     training_args.logging_steps = 250
     training_args.eval_steps = 250
-    training_args.save_total_limit=3
+    training_args.save_total_limit=5
     training_args.load_best_model_at_end=True
     training_args.metric_for_best_model="eval_exact_match"
     training_args.greater_is_better=True
@@ -57,7 +58,8 @@ def main():
     # wandb 설정
     # entity는 wandb login으로 자동 설정됩니다. entity를 변경하고 싶으시면 relogin하면 됩니다!
     os.environ["WANDB_ENTITY"] = "bc-ai-it-mrc" # 프로젝트 명
-    os.environ["WANDB_PROJECT"] = "채워주세요" # 프로젝트 명 ex)T2211_dev
+    os.environ["WANDB_PROJECT"] = "MRC-main" # 프로젝트 명 ex)T2211_dev
+    os.environ["WANDB_NAME"] = "[박진영]" + model_args.model_name_or_path
     training_args.report_to = ["wandb"]
     training_args.run_name = model_args.model_name_or_path # 프로젝트 내 모델 run 이름 ex) [ㅇㅇㅇ]klue/roberta-base
 
@@ -162,7 +164,7 @@ def run_mrc(
             stride=data_args.doc_stride,
             return_overflowing_tokens=True,
             return_offsets_mapping=True,
-            #return_token_type_ids=False, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
+            return_token_type_ids=False, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
             padding="max_length" if data_args.pad_to_max_length else False,
         )
 
@@ -254,7 +256,7 @@ def run_mrc(
             stride=data_args.doc_stride,
             return_overflowing_tokens=True,
             return_offsets_mapping=True,
-            #return_token_type_ids=False, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
+            return_token_type_ids=False, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
             padding="max_length" if data_args.pad_to_max_length else False,
         )
 

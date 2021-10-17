@@ -5,6 +5,7 @@ import faiss
 import pickle
 import numpy as np
 import pandas as pd
+import torch
 
 from tqdm.auto import tqdm
 from contextlib import contextmanager
@@ -70,7 +71,7 @@ class SparseRetrieval:
         self.tfidfv = TfidfVectorizer(
             tokenizer=tokenize_fn,
             ngram_range=(1, 2),
-            max_features=50000,
+            # max_features=50000,
         )
 
         self.p_embedding = None  # get_sparse_embedding()로 생성합니다
@@ -87,7 +88,7 @@ class SparseRetrieval:
 
         # Pickle을 저장합니다.
         pickle_name = f"sparse_embedding.bin"
-        tfidfv_name = f"tfidv.bin"
+        tfidfv_name = f"tfidfv.bin"
         emd_path = os.path.join(self.data_path, pickle_name)
         tfidfv_path = os.path.join(self.data_path, tfidfv_name)
 
@@ -261,6 +262,7 @@ class SparseRetrieval:
         if not isinstance(result, np.ndarray):
             result = result.toarray()
 
+        # keep 기존 대비 빠른 탐색을 가능케 하는 로직
         # https://stages.ai/competitions/77/discussion/talk/post/730
         # baseline 6.7secs --> modified 2.2secs!
         doc_scores = np.partition(result, -k)[:, -k:][:, ::-1]
