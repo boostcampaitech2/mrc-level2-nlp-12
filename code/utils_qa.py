@@ -167,6 +167,7 @@ def postprocess_qa_predictions(
 
             end_indexes = np.argsort(end_logits)[-1 : -n_best_size - 1 : -1].tolist()
 
+            # keep 정답 가능 여부 판별
             for start_index in start_indexes:
                 for end_index in end_indexes:
                     # out-of-scope answers는 고려하지 않습니다.
@@ -218,7 +219,7 @@ def postprocess_qa_predictions(
             predictions.append(min_null_prediction)
 
         # offset을 사용하여 original context에서 answer text를 수집합니다.
-        context = example["context"]
+        context = example["context"] # keep exmaple => 원본
         for pred in predictions:
             offsets = pred.pop("offsets")
             pred["text"] = context[offsets[0] : offsets[1]]
@@ -253,14 +254,14 @@ def postprocess_qa_predictions(
 
             # threshold를 사용해서 null prediction을 비교합니다.
             score_diff = (
-                null_score
+                null_score # keep null 인 경우의 start + end logits
                 - best_non_null_pred["start_logit"]
                 - best_non_null_pred["end_logit"]
             )
             scores_diff_json[example["id"]] = float(score_diff)  # JSON-serializable 가능
-            if score_diff > null_score_diff_threshold:
+            if score_diff > null_score_diff_threshold: # keep 정답 없는 경우
                 all_predictions[example["id"]] = ""
-            else:
+            else: # keep 정답 있는 경우
                 all_predictions[example["id"]] = best_non_null_pred["text"]
 
         # np.float를 다시 float로 casting -> `predictions`은 JSON-serializable 가능

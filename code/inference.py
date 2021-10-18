@@ -96,18 +96,18 @@ def main():
     )
 
     # keep retrieval 확인
-    # retrieval = DprRetrieval(args=retrieval_args, tokenizer=tokenizer)
-    # retrieval.proc_embedding()
-    # datasets = retrieval.retrieve(query_or_dataset=datasets['validation'], topk=30)
+    retrieval = DprRetrieval(args=retrieval_args, tokenizer=tokenizer)
+    retrieval.proc_embedding()
+    datasets = retrieval.retrieve(query_or_dataset=datasets['validation'], topk=100)
 
     # True일 경우 : run passage retrieval
-    if data_args.eval_retrieval:
-        datasets = run_sparse_retrieval(
-            tokenizer.tokenize,
-            datasets,
-            training_args,
-            data_args,
-        )
+    # if data_args.eval_retrieval:
+    #     datasets = run_sparse_retrieval(
+    #         tokenizer.tokenize,
+    #         datasets,
+    #         training_args,
+    #         data_args,
+    #     )
 
     # eval or predict mrc model
     if training_args.do_eval or training_args.do_predict:
