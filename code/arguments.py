@@ -146,3 +146,10 @@ class RetrievalArguments:
     predict: Optional[bool] = field(
         default=True, metadata={"help": "A bool of prediction flag"}
     )
+
+@dataclass
+class PreprocessingArguments:
+    remove_html: bool = field(
+        default=False, metadata={"help": "Whether to use remove_html function"}
+    )
+
