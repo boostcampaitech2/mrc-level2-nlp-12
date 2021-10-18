@@ -66,8 +66,11 @@ class SparseRetrieval:
             dict.fromkeys([v["text"] for v in wiki.values()])
         )  # set 은 매번 순서가 바뀌므로
 
-        # keep wiki preprocessing
-        preprocess = Preprocess(self.contexts, ['russian', 'arabic'])
+        # keep wiki preprocessing with stopwords
+        stopword_df = pd.read_table('korean_stopwords.txt', delimiter='\t', encoding='utf-8', header=None)
+        stopword = stopword_df[0].tolist()
+
+        preprocess = Preprocess(self.contexts, ['russian', 'arabic'], stopwords=stopword)
         preprocess.proc_preprocessing()
         self.contexts = preprocess.sents
 

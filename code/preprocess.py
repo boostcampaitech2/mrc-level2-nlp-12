@@ -17,10 +17,11 @@ class Preprocess():
         # 'english'
     ]
 
-    def __init__(self, sents, langs: list):
+    def __init__(self, sents, langs: list, stopwords: list):
         self.sents = sents
         self.spacing = Spacing()
         self.langs = langs  # 제거 대상 언어
+        self.stopwords = stopwords
 
         self.ord_list = [] # 유니코드 범위 지정
         for lang in langs:
@@ -56,6 +57,7 @@ class Preprocess():
         self.remove_repeat_char()
         self.clean_punc()
         self.remove_linesign()
+        self.remove_stopwords()
         # self.remove_language()
         self.remove_repeated_spacing()
         # self.spacing_sent() # spacing
@@ -302,4 +304,14 @@ class Preprocess():
                         continue
                     return_sentence += w
             preprocessed_sents.append(return_sentence)
+        self.sents = preprocessed_sents
+
+    def remove_stopwords(self):
+        '''
+        A function for removing stopwords based on wordcount result in corpus (library: Twitter)
+        '''
+        preprocessed_sents = []
+        for sent in self.sents:
+            sent = [w for w in sent.split(' ') if w not in self.stopwords]  # 불용어 제거
+            preprocessed_sents.append(' '.join(sent))
         self.sents = preprocessed_sents
