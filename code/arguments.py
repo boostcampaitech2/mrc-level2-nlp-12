@@ -32,7 +32,7 @@ class ModelArguments:
             "help": "Pretrained tokenizer name or path if not the same as model_name"
         },
     )
-    
+
 
 
 @dataclass
@@ -89,7 +89,7 @@ class DataTrainingArguments:
         default=64, metadata={"help": "Define how many clusters to use for faiss."}
     )
     top_k_retrieval: int = field(
-        default=1,
+        default=30,
         metadata={
             "help": "Define how many top-k passages to retrieve based on similarity."
         },
@@ -97,3 +97,59 @@ class DataTrainingArguments:
     use_faiss: bool = field(
         default=False, metadata={"help": "Whether to build with faiss"}
     )
+
+
+@dataclass
+class RetrievalArguments:
+    is_bm25: bool = field(
+        default=False, metadata={"help": "Whether to use BM25"}
+    )
+    is_dpr: bool = field(
+        default=True, metadata={"help": "Whether to use DPR"}
+    )
+    train_dataset_name: str = field(
+        default='squad', metadata={"help": "Whether to use local dataset or not"}
+    )
+    model_checkpoint: str = field(
+        default='klue/bert-base', metadata={"help": "A model name of DPR encoder"}
+    )
+    q_encoder_path: str = field(
+        default='/opt/ml/code/q_encoder', metadata={"help": "A path of question encoder"}
+    )
+    p_encoder_path: str = field(
+        default='/opt/ml/code/p_encoder', metadata={"help": "A path of passage encoder"}
+    )
+    train_data_dir: str = field(
+        default='/opt/ml/data', metadata={"help": "A path of train data directory"}
+    )
+    train_data_name: str = field(
+        default='train_dataset', metadata={"help": "A name of train data directory"}
+    )
+    lr: Optional[float] = field(
+        default=3e-5, metadata={"help": "Learning Rate"}
+    )
+    train_batch_size: Optional[float] = field(
+        default=8, metadata={"help": "Train Batch Size"}
+    )
+    eval_batch_size: Optional[float] = field(
+        default=8, metadata={"help": "Eval Batch Size"}
+    )
+    epochs: Optional[int] = field(
+        default=2, metadata={"help": "Epochs"}
+    )
+    # gradient_accumulation_steps: Optional[int] = field(
+    #     default=1, metadata={"help": "A method to obtain memory efficiency"}
+    # )
+    num_neg: Optional[int] = field(
+        default=2, metadata={"help": "A number of negative in-batch"}
+    )
+    predict: Optional[bool] = field(
+        default=True, metadata={"help": "A bool of prediction flag"}
+    )
+
+@dataclass
+class PreprocessingArguments:
+    remove_html: bool = field(
+        default=False, metadata={"help": "Whether to use remove_html function"}
+    )
+

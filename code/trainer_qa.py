@@ -45,7 +45,7 @@ class QuestionAnsweringTrainer(Trainer):
         compute_metrics = self.compute_metrics
         self.compute_metrics = None
         try:
-            output = self.evaluation_loop(
+            output = self.prediction_loop(
                 eval_dataloader,
                 description="Evaluation",
                 # metric이 없으면 예측값을 모으는 이유가 없으므로 아래의 코드를 따르게 됩니다.
@@ -100,7 +100,7 @@ class QuestionAnsweringTrainer(Trainer):
         compute_metrics = self.compute_metrics
         self.compute_metrics = None
         try:
-            output = self.evaluation_loop(
+            output = self.prediction_loop(
                 test_dataloader,
                 description="Evaluation",
                 # metric이 없으면 예측값을 모으는 이유가 없으므로 아래의 코드를 따르게 됩니다.
