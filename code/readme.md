@@ -53,7 +53,7 @@ data에 대한 argument 는 `arguments.py` 의 `DataTrainingArguments` 에서 �
 
 # 훈련, 평가, 추론
 
-### train
+### train & eval
 
 만약 arguments 에 대한 세팅을 직접하고 싶다면 `arguments.py` 를 참고해주세요. 
 
@@ -85,13 +85,9 @@ def prepare_train_features(examples):
 python train.py --output_dir ./models/train_dataset --do_train
 ```
 
-### eval
-
-MRC 모델의 평가는(`--do_eval`) 따로 설정해야 합니다.  위 학습 예시에 단순히 `--do_eval` 을 추가로 입력해서 훈련 및 평가를 동시에 진행할 수도 있습니다.
-
 ```
-# mrc 모델 평가 (train_dataset 사용)
-python train.py --output_dir ./outputs/train_dataset --model_name_or_path ./models/train_dataset/ --do_eval 
+# 학습 & 평가 예시 (train_dataset 사용)
+python train.py --output_dir ./models/train_dataset --do_train --do_eval
 ```
 
 ### inference
@@ -105,7 +101,7 @@ retrieval 과 mrc 모델의 학습이 완료되면 `inference.py` 를 이용해 
 ```
 # ODQA 실행 (test_dataset 사용)
 # wandb 가 로그인 되어있다면 자동으로 결과가 wandb 에 저장됩니다. 아니면 단순히 출력됩니다
-python inference.py --output_dir ./outputs/test_dataset/ --dataset_name ../data/test_dataset/ --model_name_or_path ./models/train_dataset/ --do_predict
+python inference.py --output_dir ./outputs/test_dataset/ --dataset_name ../data/test_dataset/ --model_name_or_path ./models/best_model/ --do_predict
 ```
 
 ### How to submit

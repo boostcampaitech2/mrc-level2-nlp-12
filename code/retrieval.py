@@ -5,10 +5,12 @@ import faiss
 import pickle
 import numpy as np
 import pandas as pd
+import torch
 
 from tqdm.auto import tqdm
 from contextlib import contextmanager
 from typing import List, Tuple, NoReturn, Any, Optional, Union
+from preprocess import *
 
 
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -63,12 +65,27 @@ class SparseRetrieval:
         self.contexts = list(
             dict.fromkeys([v["text"] for v in wiki.values()])
         )  # set 은 매번 순서가 바뀌므로
+
+        # keep wiki preprocessing with stopwords
+        stopword_df = pd.read_table(
+            "korean_stopwords.txt", delimiter="\t", encoding="utf-8", header=None
+        )
+        stopword = stopword_df[0].tolist()
+
+        preprocess = Preprocess(
+            self.contexts, ["russian", "arabic"], stopwords=stopword
+        )
+        preprocess.proc_preprocessing()
+        self.contexts = preprocess.sents
+
         print(f"Lengths of unique contexts : {len(self.contexts)}")
         self.ids = list(range(len(self.contexts)))
 
         # Transform by vectorizer
         self.tfidfv = TfidfVectorizer(
-            tokenizer=tokenize_fn, ngram_range=(1, 2), max_features=50000,
+            tokenizer=tokenize_fn,
+            ngram_range=(1, 2),
+            # max_features=50000,
         )
 
         self.p_embedding = None  # get_sparse_embedding()로 생성합니다
@@ -85,7 +102,7 @@ class SparseRetrieval:
 
         # Pickle을 저장합니다.
         pickle_name = f"sparse_embedding.bin"
-        tfidfv_name = f"tfidv.bin"
+        tfidfv_name = f"tfidfv.bin"
         emd_path = os.path.join(self.data_path, pickle_name)
         tfidfv_path = os.path.join(self.data_path, tfidfv_name)
 
@@ -258,12 +275,18 @@ class SparseRetrieval:
         result = query_vec * self.p_embedding.T
         if not isinstance(result, np.ndarray):
             result = result.toarray()
-        doc_scores = []
-        doc_indices = []
-        for i in range(result.shape[0]):
-            sorted_result = np.argsort(result[i, :])[::-1]
-            doc_scores.append(result[i, :][sorted_result].tolist()[:k])
-            doc_indices.append(sorted_result.tolist()[:k])
+
+        # keep 기존 대비 빠른 탐색을 가능케 하는 로직
+        # https://stages.ai/competitions/77/discussion/talk/post/730
+        # baseline 6.7secs --> modified 2.2secs!
+        doc_scores = np.partition(result, -k)[:, -k:][:, ::-1]
+        ind = np.argsort(doc_scores, axis=-1)[:, ::-1]
+        doc_scores = np.sort(doc_scores, axis=-1)[:, ::-1]
+        doc_indices = np.argpartition(result, -k)[:, -k:][:, ::-1]
+        r, c = ind.shape
+        ind = ind + np.tile(np.arange(r).reshape(-1, 1), (1, c)) * c
+        doc_indices = doc_indices.ravel()[ind].reshape(r, c)
+
         return doc_scores, doc_indices
 
     def retrieve_faiss(

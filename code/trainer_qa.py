@@ -17,7 +17,7 @@ Question-Answering task와 관련된 'Trainer'의 subclass 코드 입니다.
 """
 
 from transformers import Trainer, is_datasets_available, is_torch_tpu_available
-from transformers.trainer_utils import PredictionOutput
+from transformers.trainer_utils import PredictionOutput, denumpify_detensorize
 
 
 if is_datasets_available():
@@ -60,7 +60,7 @@ class QuestionAnsweringTrainer(Trainer):
         compute_metrics = self.compute_metrics
         self.compute_metrics = None
         try:
-            output = self.evaluation_loop(
+            output = self.prediction_loop(
                 eval_dataloader,
                 description="Evaluation",
                 # metric이 없으면 예측값을 모으는 이유가 없으므로 아래의 코드를 따르게 됩니다.
@@ -85,6 +85,9 @@ class QuestionAnsweringTrainer(Trainer):
                 eval_examples, eval_dataset, output.predictions, self.args
             )  # EvalPrediction의 클래스를 가지고 있고 그 안에는 metric을 계산 할 수 있게 prediction과 reference(ground truth)를 가지고 있다.
             metrics = self.compute_metrics(eval_preds)
+
+            # To be JSON-serializable, we need to remove numpy types or zero-d tensors
+            metrics = denumpify_detensorize(metrics)
 
             # Prefix all keys with metric_key_prefix + '_'
             for key in list(metrics.keys()):
