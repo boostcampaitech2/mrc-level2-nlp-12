@@ -47,9 +47,9 @@ def main():
     # [참고] argument를 manual하게 수정하고 싶은 경우에 아래와 같은 방식을 사용할 수 있습니다
     # training_args.per_device_train_batch_size = 4
     # print(training_args.per_device_train_batch_size)
-    training_args.evaluation_strategy = IntervalStrategy.STEPS
-    training_args.logging_steps = 250
-    training_args.eval_steps = 250
+    # training_args.evaluation_strategy
+    # training_args.logging_steps = 250
+    # training_args.eval_steps = 250
     training_args.save_total_limit = 3
     training_args.load_best_model_at_end = True
 
@@ -312,7 +312,7 @@ def run_mrc(
             features=features,
             predictions=predictions,
             max_answer_length=data_args.max_answer_length,
-            output_dir="./outputs/train_dataset",
+            output_dir=training_args.output_dir,
         )
         # Metric을 구할 수 있도록 Format을 맞춰줍니다.
         formatted_predictions = [

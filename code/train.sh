@@ -1,6 +1,6 @@
 python train.py \
         --model_name_or_path klue/roberta-large \
-        --output_dir ./models/klue-roberta-large-valila \
+        --output_dir ./models/klue/roberta-large \
         --do_train \
         --do_eval \
         --evaluation_strategy steps \
@@ -9,21 +9,26 @@ python train.py \
         --overwrite_cache \
         --overwrite_output_dir \
         --preprocessing_num_workers 4 \
-        --run_name "[김재현]-klue/roberta-large-valila" \
-
-python train.py \
-        --model_name_or_path klue/roberta-large \
-        --output_dir ./models/klue-roberta-large-warmup \
-        --do_train \
-        --do_eval \
-        --evaluation_strategy steps \
-        --logging_steps 100 \
-        --eval_step 250 \
-        --overwrite_cache \
-        --overwrite_output_dir \
-        --preprocessing_num_workers 4 \
-        --warmup_steps 400 \
-        --run_name "[김재현]-klue/roberta-large-warmup" \
+        --run_name "[김재현]-klue/roberta-large" \
+        --learning_rate 1e-5 \
+        --warmup_ratio 0.2 \
+        # --max_seq_length 256 \
+        # --doc_stride 128 \
+        # --max_answer_length 64 \
+# python train.py \
+#         --model_name_or_path /opt/ml/mrc-level2-nlp-12/code/models/best_model \
+#         --output_dir ./models/klue-roberta-large-vanilla\
+#         --do_eval \
+#         --do_train \
+#         --evaluation_strategy steps \
+#         --logging_steps 100 \
+#         --eval_step 250 \
+#         --overwrite_cache \
+#         --overwrite_output_dir \
+#         --preprocessing_num_workers 4 \
+#         --run_name "[김재현]-klue/roberta-large-vanilla-saved" \
+        # --model_name_or_path klue/roberta-large \
+        # --warmup_steps 400 \
         # --model_name_or_path klue/roberta-large \
 
 # optional arguments:

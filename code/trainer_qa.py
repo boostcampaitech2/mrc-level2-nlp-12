@@ -105,7 +105,7 @@ class QuestionAnsweringTrainer(Trainer):
 
         self._memory_tracker.stop_and_update_metrics(metrics)
 
-        return metrics
+        return metrics  # 해당 메트릭은 train parser의 metric_for_best_model와 함께 사용하여 best model 저장에 쓰인다
 
     def predict(self, test_dataset, test_examples, ignore_keys=None):
         test_dataloader = self.get_test_dataloader(test_dataset)
