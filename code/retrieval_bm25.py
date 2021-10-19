@@ -9,7 +9,11 @@ from tqdm.auto import tqdm
 from contextlib import contextmanager
 from typing import List, Tuple, NoReturn, Any, Optional, Union
 
-from rank_bm25 import BM25Okapi # https://github.com/dorianbrown/rank_bm25
+from rank_bm25 import ( # https://github.com/dorianbrown/rank_bm25
+    BM25Okapi,
+    BM25L,
+    BM25Plus,
+)
 
 from datasets import (
     Dataset,
@@ -81,7 +85,8 @@ class BM25Retrieval:
         else:
             print("Build passage embedding")
             with timer('bm25'):
-                self.bm25 = BM25Okapi(self.contexts, tokenizer=self.tokenize_fn, k1=1.2, b=0.75)
+                tokenized_contexts = [self.tokenize_fn(c) for c in self.contexts]
+                self.bm25 = BM25Plus(tokenized_contexts, k1=1.2, b=0.75)
             with open(bm25_path, "wb") as file:
                 pickle.dump(self.bm25, file)
             print("Embedding pickle saved.")
@@ -164,7 +169,7 @@ class BM25Retrieval:
         """
 
         with timer("single query by exhaustive search"):
-            result = self.bm25.get_scores(query)
+            result = self.bm25.get_scores(self.tokenize_fn(query))
         assert (
             np.sum(result) != 0
         ), f"오류가 발생했습니다. 이 오류는 보통 query에 vectorizer의 vocab에 없는 단어만 존재하는 경우 발생합니다."
