@@ -148,8 +148,8 @@ class RetrievalArguments:
     )
 
 @dataclass
-class PreprocessingArguments:
-    remove_html: bool = field(
-        default=False, metadata={"help": "Whether to use remove_html function"}
+class ElasticSearchArguments:
+    index_name: str = field(
+        default='dev', metadata={"help": "A name of index in ES"}
     )
 
