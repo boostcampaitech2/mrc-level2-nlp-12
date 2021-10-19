@@ -98,7 +98,7 @@ class EsRetrieval():
         A function for converting contexts to dictionary
         '''
         docs = dict()
-        for i in range(1, len(self.contexts[:5000]) + 1):
+        for i in range(1, len(self.contexts) + 1):
             docs[i] = {
                 "content": self.contexts[i - 1]
             }
