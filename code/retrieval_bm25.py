@@ -120,7 +120,7 @@ class BM25Retrieval:
                 print(f"Top-{i+1} passage with score {doc_scores[i]:4f}")
                 print(self.contexts[doc_indices[i]])
 
-            return (doc_scores[:topk], [self.contexts[doc_indices[i]] for i in range(topk)])
+            return (doc_scores, [self.contexts[doc_indices[i]] for i in range(topk)])
 
         elif isinstance(query_or_dataset, Dataset):
             # Retrieve한 Passage를 pd.DataFrame으로 반환합니다.
