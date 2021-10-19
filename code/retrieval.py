@@ -81,8 +81,6 @@ class SparseRetrieval:
         self.tfidfv = TfidfVectorizer(
             tokenizer=tokenize_fn,
             ngram_range=(1, 2),
-            min_df=2, # keep 문서 최소 등장 횟수
-            max_df=0.8 # keep 해당 비율 이상의 문서에서 등장하는 단어의 경우 무시
             # max_features=50000,
         )
 
