@@ -1,0 +1,227 @@
+import os
+import json
+import time
+import numpy as np
+import pandas as pd
+
+from tqdm.auto import tqdm
+from contextlib import contextmanager
+from typing import List, Tuple, NoReturn, Any, Optional, Union
+
+from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
+
+from elasticsearch import Elasticsearch
+
+from datasets import Dataset
+
+@contextmanager
+def timer(name):
+    t0 = time.time()
+    yield
+    print(f"[{name}] done in {time.time() - t0:.3f} s")
+
+
+class ESRetrieval:
+    def __init__(
+        self,
+        index: Optional[str] = "wikipedia",
+        data_path: Optional[str] = "../data/",
+        context_path: Optional[str] = "wikipedia_documents.json",
+    ) -> NoReturn:
+        """
+        Summary:
+            instantiate ElasticsearchDocumentStore and store data if needed.
+
+        Args:
+            index (Optional[str], optional): index name. Defaults to "wikipedia".
+            data_path (Optional[str], optional): data path. Defaults to "../data/".
+            context_path (Optional[str], optional): data path. Defaults to "wikipedia_documents.json".
+
+        Returns:
+            NoReturn: no return
+        """
+
+        self.document_store = None
+
+        if Elasticsearch('localhost:9200').indices.exists(index):
+            self.document_store = ElasticsearchDocumentStore(
+                host="localhost",
+                port=9200,
+                index=index,
+                create_index=False,
+            )
+        else:
+            self.__create_index(index)
+            self.__store_data(data_path, context_path)
+            
+    def __create_index(self, index: str) -> NoReturn:
+
+        """
+        Summary:
+            create index.
+
+        Args:
+            index (str): index name
+
+        Returns:
+            NoReturn: no return
+        """
+
+        custom_mapping = {
+            "settings": {
+                "analysis": {
+                    "analyzer": {
+                        "my_analyzer": {
+                            "type": "custom",
+                            "tokenizer": "nori_tokenizer",
+                            "decompound_mode": "mixed",
+                            "filter": [
+                                "nori_readingform", # 한자 -> 한글로 번역
+                                "nori_number", # 한글 -> 숫자 ex) 영영칠 -> 7
+                                "nori_posfilter", # 품사 제거 https://coding-start.tistory.com/167
+                            ]
+                        }
+                    },
+                    "filter":{
+                        "nori_posfilter":{
+                            "type":"nori_part_of_speech",
+                            "stoptags":[
+                                "E",
+                                "IC",
+                                "J",
+                                "MAG",
+                                "MM",
+                                "NA",
+                                "NR",
+                                "SC",
+                                "SE",
+                                "SF",
+                                "SH",
+                                "SL",
+                                "SN",
+                                "SP",
+                                "SSC",
+                                "SSO",
+                                "SY",
+                                "UNA",
+                                "UNKNOWN",
+                                "VA",
+                                "VCN",
+                                "VCP",
+                                "VSV",
+                                "VV",
+                                "VX",
+                                "XPN",
+                                "XR",
+                                "XSA",
+                                "XSN",
+                                "XSV"
+                            ]
+                        }
+                    }
+                },
+                "similarity": {
+                    "bm25": {
+                        "type": "BM25",
+                        "b": 0.75,
+                        "k1": 1.2,
+                    }
+                }
+            },
+            "mappings": {
+                "properties": {
+                    "text": {
+                        "type": "text",
+                        "analyzer": "my_analyzer",
+                        "similarity": "bm25"
+                    },
+                    "embedding": {
+                        "type": "dense_vector",
+                        "dims": 768
+                    }
+                }
+            }
+        }
+
+        self.document_store = ElasticsearchDocumentStore(
+            host="localhost",
+            port=9200,
+            index=index,
+            custom_mapping=custom_mapping,
+            create_index=True
+        )
+
+    def __store_data(
+        self, 
+        data_path: str,
+        context_path: str,
+    ) -> NoReturn:
+
+        """
+        Summary:
+            store data.
+
+        Args:
+            data_path (str): data path
+            context_path (str): context path
+
+        Returns:
+            NoReturn: no return
+        """
+
+        wiki_json = None
+        with open(os.path.join(data_path, context_path), "r", encoding="utf-8") as f:
+            wiki_json = json.load(f)
+
+        wiki_df = pd.DataFrame.from_dict(wiki_json, orient='index')
+        wiki_df = wiki_df.drop_duplicates(['text'], keep='first', ignore_index=True) # https://mizykk.tistory.com/93
+
+        wiki = [{"id": val['document_id'], "text": val['text'], "meta": {"name": val['title']}} for row_idx, val in wiki_df.iterrows()]
+
+        self.document_store.write_documents(wiki)
+
+    def retrieve(
+        self, 
+        query_or_dataset: Dataset, 
+        topk: Optional[int] = 1,
+    ) -> Union[Tuple[List, List], pd.DataFrame]:
+
+        """
+        Summary:
+            retrieve top k contexts based on given query dataset.
+
+        Args:
+            query_or_dataset (Dataset): query dataset
+            topk (int): top k
+
+        Returns:
+            (Union[Tuple[List, List], pd.DataFrame]): context and query dataframe
+        """
+        # Retrieve한 Passage를 pd.DataFrame으로 반환합니다.
+        total = []
+        documents = []
+        with timer("query elasticsearch"):
+            for query in query_or_dataset["question"]:
+                documents.append(self.document_store.query(query=query, top_k=topk))
+
+        for idx, example in enumerate(
+            tqdm(query_or_dataset, desc="Sparse retrieval: ")
+        ):
+            tmp = {
+                # Query와 해당 id를 반환합니다.
+                "question": example["question"],
+                "id": example["id"],
+                # Retrieve한 Passage의 id, context를 반환합니다.
+                #"context_id": doc_indices[idx],
+                "context": " ".join(
+                    [d.to_dict()["text"] for d in documents[idx]]
+                ) if topk > 1 else documents[idx][0].to_dict()["text"],
+            }
+            if "context" in example.keys() and "answers" in example.keys():
+                # validation 데이터를 사용하면 ground_truth context와 answer도 반환합니다.
+                tmp["original_context"] = example["context"]
+                tmp["answers"] = example["answers"]
+            total.append(tmp)
+
+        cqas = pd.DataFrame(total)
+        return cqas
