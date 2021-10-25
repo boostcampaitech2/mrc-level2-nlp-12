@@ -1,10 +1,26 @@
 import os
 import json
 import pprint
+import time
+import pandas as pd
 
+from datasets import (
+    Value,
+    Features,
+    Dataset,
+    DatasetDict,
+)
+from preprocess import *
+from contextlib import contextmanager
 from typing import Optional
 from elasticsearch import Elasticsearch
 from tqdm import tqdm
+
+@contextmanager
+def timer(name):
+    t0 = time.time()
+    yield
+    print(f"[{name}] done in {time.time() - t0:.3f} s")
 
 # https://www.notion.so/ES-24cfe4e24deb45aca4a10dc806882a65
 class EsRetrieval():
@@ -39,6 +55,15 @@ class EsRetrieval():
             dict.fromkeys([v["text"] for v in wiki.values()])
         )
 
+        # optional
+        stopword_df = pd.read_table('korean_stopwords.txt', delimiter='\t', encoding='utf-8', header=None)
+        stopword = stopword_df[0].tolist()
+        preprocess = Preprocess(self.contexts, ['russian', 'arabic'], stopwords=stopword)
+        preprocess.proc_preprocessing()
+        self.contexts = preprocess.sents
+        print('--- Preprocessed Contexts Lengths ---')
+        print(len(self.contexts))
+
     def _create_index_settings(self):
         '''
         A function for setting indexing method (customization recommended)
@@ -51,7 +76,7 @@ class EsRetrieval():
                             "my_analyzer": {
                                 "tokenizer": "tokenizer_discard_punctuation_false",
                                 "filter": [ # filter enroll
-                                    "pos_stop_sp", "nori_number"
+                                    "nori_number", "pos_stop_sp"
                                 ],
                             }
                         },
@@ -62,9 +87,10 @@ class EsRetrieval():
                             }
                         },
                         "filter": { # define custom filter
+                            # https://lucene.apache.org/core/8_9_0/analyzers-nori/org/apache/lucene/analysis/ko/POS.Tag.html
                             "pos_stop_sp": {
                                 "type": "nori_part_of_speech",
-                                "stoptags": ["SP"] # tags should be removed
+                                "stoptags": ["J", "NA", "SSO", "SSC", "SH", "SL", "SY"] # tags should be removed
                             }
                         }
                     }
@@ -154,7 +180,64 @@ class EsRetrieval():
         print('--- Check Search Result ---')
         pprint.pprint(res)
 
-    def _retrieve(self):
-        pass # keep to be continued
+    def _get_relevant_doc_bulk(self, query_or_dataset, topk=5):
+        '''
+        A function for getting relevant docs on queries
 
+        Args:
+            query_or_dataset (dataset): queries
+            topk (int): default 5
+        '''
+        doc_indices = []
+        for i in range(len(query_or_dataset)):
+            res = self.es.search(index=self.index_name, q=query_or_dataset[i], size=topk)  # topk 5
+            doc_indices.append(self._get_doc_ids(res))
 
+        print('--- Check Doc Indices by ST ---')
+        print(doc_indices[0])
+        return doc_indices
+
+    def _get_doc_ids(self, res):
+        '''
+        A function for extracting doc ids from result of ES search
+
+        Args:
+            res : raw result of ES search
+        '''
+        docs = res['hits']['hits']
+        doc_indices = [int(tmp['_id']) - 1 for tmp in docs] # -1 => ES index to real doc index
+        return doc_indices
+
+    def _retrieve(self, query_or_dataset, topk=5):
+        '''
+        A function for retrieving docs based on topk scores
+
+        Args:
+            query_or_dataset (dataset): queries
+        '''
+        total = []
+        with timer("query elastic search"):
+            doc_indices = self._get_relevant_doc_bulk(query_or_dataset['question'], topk=topk)
+        for idx, example in enumerate(tqdm(query_or_dataset, desc="ES retrieval: ")):
+            tmp = {
+                "question": example["question"],
+                "id": example["id"],
+                "context_id": doc_indices[idx],
+                "context": " ".join(
+                    [self.contexts[pid] for pid in doc_indices[idx]]
+                ),
+            }
+            if "context" in example.keys() and "answers" in example.keys():
+                tmp["original_context"] = example["context"]
+                tmp["answers"] = example["answers"]
+            total.append(tmp)
+        df = pd.DataFrame(total)
+        f = Features(
+            {
+                "context": Value(dtype="string", id=None),
+                "id": Value(dtype="string", id=None),
+                "question": Value(dtype="string", id=None),
+            }
+        )
+        datasets = DatasetDict({"validation": Dataset.from_pandas(df, features=f)})
+        return datasets
