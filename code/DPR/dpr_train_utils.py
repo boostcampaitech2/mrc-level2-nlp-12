@@ -1,5 +1,6 @@
 import os.path as path
-from dpr_model import DPRetrieval
+import os
+from .dpr_model import DPRetrieval
 import pickle
 import torch
 import tqdm
@@ -41,6 +42,7 @@ class DPRTrainer:
             args, tokenizer, wiki_dataset, train_dataset, eval_dataset
         )
         self.contexts = self.dpr.contexts
+        self.context_ids = self.dpr.context_ids
 
     def load_embedding(self):
         if path.isfile("question_embedding.bin"):
@@ -104,6 +106,8 @@ class DPRTrainer:
     def train(self, args, p_encoder, q_encoder, **kwargs):
         if self.args.use_wandb:
             self.init_wandb(**kwargs)
+            self.run.config.update(self.args)
+            self.log_table = []
         p_encoder, q_encoder = self._train(
             args, self.dpr._load_dataset(), p_encoder, q_encoder, self.args.num_neg
         )
@@ -179,6 +183,8 @@ class DPRTrainer:
                 for batch in tepoch:
                     if global_step % args.eval_steps == 0 and global_step != 0:
                         self.eval(p_encoder, q_encoder, global_step)
+                    if global_step > 700:
+                        break
                     p_encoder.train()
                     q_encoder.train()
 
@@ -248,6 +254,12 @@ class DPRTrainer:
                     del p_inputs, q_inputs
 
         # 인코더 저장
+        if path.isfile("q_encoder/config.json"):
+            os.remove("q_encoder/config.json")
+            os.remove("q_encoder/pytorch_model.bin")
+        if path.isfile("p_encoder/config.json"):
+            os.remove("p_encoder/config.json")
+            os.remove("p_encoder/pytorch_model.bin")
         q_encoder.save_pretrained("q_encoder/")
         p_encoder.save_pretrained("p_encoder/")
         return p_encoder, q_encoder
@@ -272,14 +284,19 @@ class DPRTrainer:
             if ans in doc_indices[i]:
                 cnt += 1
         n = random.randint(0, len(queries))
-
         if self.args.use_wandb:
-            self.text_table.add_data(
-                global_step,
-                ground_truth[n],
-                queries[n],
-                self.contexts[ground_truth[n]],
-                self.contexts[doc_indices[n][0]],
+            self.log_table.append(
+                [
+                    global_step,
+                    ground_truth[n],
+                    queries[n],
+                    self.contexts[ground_truth[n]],
+                    self.contexts[doc_indices[n][0]],
+                ]
+            )
+            self.text_table = wandb.Table(
+                columns=["global_step", "doc_id", "question", "ground_truth", "top1"],
+                data=self.log_table,
             )
         acc = cnt / len(doc_indices) * 100
         # loss_mean = losses / global_step
@@ -295,6 +312,15 @@ class DPRTrainer:
         if self.args.use_wandb:
             self.run.log(metric)
             self.run.log({"valid_samples": self.text_table})
+        # 인코더 저장
+        if path.isfile("q_encoder/config.json"):
+            os.remove("q_encoder/config.json")
+            os.remove("q_encoder/pytorch_model.bin")
+        if path.isfile("p_encoder/config.json"):
+            os.remove("p_encoder/config.json")
+            os.remove("p_encoder/pytorch_model.bin")
+        q_encoder.save_pretrained("q_encoder/")
+        p_encoder.save_pretrained("p_encoder/")
         return acc
 
     def get_relevant_doc_bulk(self, queries, topk=1):
@@ -344,7 +370,4 @@ class DPRTrainer:
     def init_wandb(self, entity, project, runname):
         # self.run = wandb.init(project="T2050-retrieval-dev", entity="bc-ai-it-mrc", name="metric_text")
         self.run = wandb.init(project=project, entity=entity, name=runname)
-        self.text_table = wandb.Table(
-            columns=["global_step", "doc_id", "question", "ground_truth", "top1"]
-        )
 

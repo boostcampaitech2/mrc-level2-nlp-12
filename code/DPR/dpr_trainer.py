@@ -1,5 +1,7 @@
-from dpr_train_utils import DPRTrainer
-from dpr_model import DPRetrieval
+from .dpr_train_utils import DPRTrainer
+from .dpr_model import DPRetrieval
+
+# from DPR import DPRTrainer,DPRetrieval
 import os.path as path
 import json
 from datasets import load_from_disk

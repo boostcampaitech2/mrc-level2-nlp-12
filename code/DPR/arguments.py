@@ -125,7 +125,7 @@ class RetrievalArguments:
     eval_batch_size: Optional[float] = field(
         default=8, metadata={"help": "Eval Batch Size"}
     )
-    epochs: Optional[int] = field(default=10, metadata={"help": "Epochs"})
+    epochs: Optional[int] = field(default=1, metadata={"help": "Epochs"})
     # gradient_accumulation_steps: Optional[int] = field(
     #     default=1, metadata={"help": "A method to obtain memory efficiency"}
     # )

@@ -43,6 +43,7 @@ class DPRDataset:
 
         with open(path, "r") as f:
             self.wiki = json.load(f)
+        return self.wiki
 
     def load_train_data(self, path=None):
         if self.dataset == None:

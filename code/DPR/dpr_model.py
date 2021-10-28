@@ -11,7 +11,7 @@ import torch.nn as nn
 from torch.utils.data import TensorDataset
 import os.path as path
 import numpy as np
-from dpr_dataset import BM25Data
+from .dpr_dataset import BM25Data
 from contextlib import contextmanager
 import time
 import tqdm
@@ -24,11 +24,10 @@ def timer(name):
     print(f"[{name}] done in {time.time() - t0:.3f} s")
 
 
-class Encoder(nn.Module):
-    def __init__(self, model_checkpoint):
-        super().__init__()
+class Encoder(BertPreTrainedModel):
+    def __init__(self, model_checkpoint, config):
+        super(Encoder, self).__init__(config)
         self.model_checkpoint = model_checkpoint
-        config = AutoConfig.from_pretrained(model_checkpoint)
         self.model = AutoModel.from_pretrained(model_checkpoint, config=config)
 
     def forward(self, input_ids, attention_mask=None, token_type_ids=None):
@@ -85,12 +84,14 @@ class DPRetrieval:
             path.join(self.args.q_encoder_path, "pytorch_model.bin")
         ) and path.isfile(path.join(self.args.p_encoder_path, "pytorch_model.bin")):
             print("--- Load Encoders from Local ---")
-            q_encoder = Encoder(self.args.q_encoder_path)
-            p_encoder = Encoder(self.args.p_encoder_path)
+            config = AutoConfig.from_pretrained(self.args.q_encoder_path)
+            q_encoder = Encoder(self.args.q_encoder_path, config)
+            p_encoder = Encoder(self.args.p_encoder_path, config)
         else:
             print("--- Load Encoders from Server ---")
-            q_encoder = Encoder(self.args.model_checkpoint)
-            p_encoder = Encoder(self.args.model_checkpoint)
+            config = AutoConfig.from_pretrained(self.args.model_checkpoint)
+            q_encoder = Encoder(self.args.model_checkpoint, config)
+            p_encoder = Encoder(self.args.model_checkpoint, config)
 
         return q_encoder, p_encoder
 
@@ -123,7 +124,8 @@ class DPRetrieval:
                         self.train_dataset["title"],
                         self.train_dataset["context"],
                         self.train_dataset["question"],
-                    )
+                    ),
+                    desc="setting in-batch dataset",
                 ):
                     titles.append(t)
                     while True:
