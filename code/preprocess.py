@@ -272,7 +272,7 @@ class Preprocess():
         """
         preprocessed_sents = []
         for sent in self.sents:
-            sent = re.sub(r"[\n\t\r\v\f\\\\n\\t\\r\\v\\f/[{2,}]{2,}]", "", sent)
+            sent = re.sub(r"[\n\t\r\v\f\\\\n\\t\\r\\v\\f]", "", sent)
             if sent:
                 preprocessed_sents.append(sent)
         self.sents = preprocessed_sents
