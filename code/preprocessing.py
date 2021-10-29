@@ -26,7 +26,7 @@ def preprocess(df) -> list:
     return context_list
 
 def replace_chars(context):
-    cotext = context.replace('\n', ' ')
+    context = context.replace('\n', ' ')
     context = context.replace('\\n', ' ')
     context = context.replace('  ', ' ')
     return context
