@@ -61,7 +61,7 @@ class SparseRetrieval:
             wiki = json.load(f)
 
         self.contexts = list(
-            dict.fromkeys([v["text"] for v in wiki.values()])
+            dict.fromkeys([self.replace_chars(v["text"]) for v in wiki.values()])
         )  # set 은 매번 순서가 바뀌므로
         print(f"Lengths of unique contexts : {len(self.contexts)}")
         self.ids = list(range(len(self.contexts)))
@@ -76,7 +76,13 @@ class SparseRetrieval:
         self.p_embedding = None  # get_sparse_embedding()로 생성합니다
         self.indexer = None  # build_faiss()로 생성합니다.
 
-    def get_sparse_embedding(self) -> NoReturn:
+    def replace_chars(context):
+        context = context.replace('\n', ' ')
+        context = context.replace('\\n', ' ')
+        context = context.replace('  ', ' ')
+        return context
+
+    def get_sparse_embedding(self, new_embedding=False) -> NoReturn:
 
         """
         Summary:
@@ -91,7 +97,7 @@ class SparseRetrieval:
         emd_path = os.path.join(self.data_path, pickle_name)
         tfidfv_path = os.path.join(self.data_path, tfidfv_name)
 
-        if os.path.isfile(emd_path) and os.path.isfile(tfidfv_path):
+        if os.path.isfile(emd_path) and os.path.isfile(tfidfv_path) and not new_embedding:
             with open(emd_path, "rb") as file:
                 self.p_embedding = pickle.load(file)
             with open(tfidfv_path, "rb") as file:
@@ -245,7 +251,7 @@ class SparseRetrieval:
         """
         Arguments:
             queries (List):
-                하나의 Query를 받습니다.
+                여러개의 Query를 받습니다.
             k (Optional[int]): 1
                 상위 몇 개의 Passage를 반환할지 정합니다.
         Note:
@@ -433,6 +439,7 @@ if __name__ == "__main__":
         data_path=args.data_path,
         context_path=args.context_path,
     )
+    retriever.get_sparse_embedding()
 
     query = "대통령을 포함한 미국의 행정부 견제권을 갖는 국가 기관은?"
 
