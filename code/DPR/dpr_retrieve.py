@@ -21,7 +21,7 @@ def timer(name):
 
 class DensePassageRetrieval(DPRTrainer):
     def __init__(
-        self, args, tokenizer, wiki_dataset, train_dataset, eval_dataset, q_encoder
+        self, args, tokenizer, wiki_dataset, train_dataset, eval_dataset, q_encoder,
     ) -> None:
         super().__init__(args, tokenizer, wiki_dataset, train_dataset, eval_dataset)
         self.q_encoder = q_encoder
@@ -127,10 +127,10 @@ class DensePassageRetrieval(DPRTrainer):
 
     def get_relevant_doc_bulk(self, queries, topk=1):
         print("--- Question Embedding Start ---")
-        self.q_encoder.eval()
-        self.q_encoder.cuda()
 
         with torch.no_grad():
+            self.q_encoder.eval()
+            self.q_encoder.cuda()
             q_seqs_val = self.tokenizer(
                 queries,
                 padding="max_length",

@@ -183,6 +183,7 @@ class DPRTrainer:
                 for batch in tepoch:
                     if global_step % args.eval_steps == 0 and global_step != 0:
                         self.eval(p_encoder, q_encoder, global_step)
+
                     if global_step > 700:
                         break
                     p_encoder.train()
@@ -260,8 +261,8 @@ class DPRTrainer:
         if path.isfile("p_encoder/config.json"):
             os.remove("p_encoder/config.json")
             os.remove("p_encoder/pytorch_model.bin")
-        q_encoder.save_pretrained("q_encoder/")
-        p_encoder.save_pretrained("p_encoder/")
+        # q_encoder.save_pretrained("q_encoder/")
+        # p_encoder.save_pretrained("p_encoder/")
         return p_encoder, q_encoder
 
     def eval(self, p_encoder, q_encoder, global_step):
@@ -319,8 +320,10 @@ class DPRTrainer:
         if path.isfile("p_encoder/config.json"):
             os.remove("p_encoder/config.json")
             os.remove("p_encoder/pytorch_model.bin")
-        q_encoder.save_pretrained("q_encoder/")
-        p_encoder.save_pretrained("p_encoder/")
+        torch.save(p_encoder.state_dict(), os.path.join("p_encoder", f"p_encoder.pt"))
+        torch.save(q_encoder.state_dict(), os.path.join("q_encoder", f"q_encoder.pt"))
+        # q_encoder.save_pretrained("q_encoder/")
+        # p_encoder.save_pretrained("p_encoder/")
         return acc
 
     def get_relevant_doc_bulk(self, queries, topk=1):

@@ -20,6 +20,7 @@ from datasets import (
     Dataset,
     DatasetDict,
 )
+import torch
 
 from transformers import AutoConfig, AutoModelForQuestionAnswering, AutoTokenizer
 
@@ -30,18 +31,15 @@ from transformers import (
     TrainingArguments,
     set_seed,
 )
+from DPR.dpr_model import Encoder
 
 from utils_qa import postprocess_qa_predictions, check_no_error
 from trainer_qa import QuestionAnsweringTrainer
 from retrieval import SparseRetrieval
 from dpr import DprRetrieval, Retrieval
 
-from arguments import (
-    ModelArguments,
-    DataTrainingArguments,
-    RetrievalArguments
-)
-
+from arguments import ModelArguments, DataTrainingArguments, RetrievalArguments
+from DPR import DensePassageRetrieval, DPRDataset
 
 logger = logging.getLogger(__name__)
 
@@ -53,9 +51,18 @@ def main():
     parser = HfArgumentParser(
         (ModelArguments, DataTrainingArguments, TrainingArguments, RetrievalArguments)
     )
-    model_args, data_args, training_args, retrieval_args = parser.parse_args_into_dataclasses()
+    (
+        model_args,
+        data_args,
+        training_args,
+        retrieval_args,
+    ) = parser.parse_args_into_dataclasses()
 
     training_args.do_train = True
+    data_args.dataset_name = "/opt/ml/data/test_dataset"
+    # model_args.config_name = "klue/roberta-large"
+    model_args.tokenizer_name = "klue/roberta-large"
+    model_args.model_name_or_path = "./models/best_model"
 
     print(f"model is from {model_args.model_name_or_path}")
     print(f"data is from {data_args.dataset_name}")
@@ -78,15 +85,12 @@ def main():
 
     # AutoConfig를 이용하여 pretrained model 과 tokenizer를 불러옵니다.
     # argument로 원하는 모델 이름을 설정하면 옵션을 바꿀 수 있습니다.
-    model_args.config_name = "klue/roberta-large"
-    model_args.tokenizer_name = "klue/roberta-large"
-
     config = AutoConfig.from_pretrained(
         model_args.config_name
         if model_args.config_name
         else model_args.model_name_or_path,
     )
-    tokenizer = AutoTokenizer.from_pretrained(
+    mrc_tokenizer = AutoTokenizer.from_pretrained(
         model_args.tokenizer_name
         if model_args.tokenizer_name
         else model_args.model_name_or_path,
@@ -97,19 +101,33 @@ def main():
         from_tf=bool(".ckpt" in model_args.model_name_or_path),
         config=config,
     )
+    dpr_tokenizer = AutoTokenizer.from_pretrained(
+        retrieval_args.model_checkpoint, use_fast=True,
+    )
 
     # keep retrieval 확인
-    retrieval = DprRetrieval(args=retrieval_args, tokenizer=tokenizer)
-    retrieval.proc_embedding()
-    datasets = retrieval.retrieve(query_or_dataset=datasets['validation'], topk=100)
+    # retrieval = DprRetrieval(args=retrieval_args, tokenizer=dpr_tokenizer)
+    # retrieval.proc_embedding()
+    # datasets = retrieval.retrieve(query_or_dataset=datasets["validation"], topk=100)
 
+    dpr_datasets = DPRDataset(
+        "/opt/ml/data/wikipedia_documents.json", "/opt/ml/data/test_dataset"
+    )
+    wiki_data = dpr_datasets.load_wiki_data()
+    # q_encoder_config = AutoConfig.from_pretrained(
+    #     "/opt/ml/mrc-level2-nlp-12/code/q_encoder"
+    # )
+    q_encoder = Encoder("klue/bert-base")
+    # p_encoder = Encoder("klue/bert-base")
+    q_encoder.load_state_dict(torch.load("q_encoder/q_encoder.pt"))
+    # p_encoder.load_state_dict(torch.load("p_encoder/p_encoder.pt"))
+    # q_encoder = Encoder("/opt/ml/mrc-level2-nlp-12/code/q_encoder", q_encoder_config)
+    retrieval = DensePassageRetrieval(
+        retrieval_args, dpr_tokenizer, wiki_data, None, None, q_encoder
+    )
+    retrieval.load_embedding()
+    datasets = retrieval.retrieve(query_or_dataset=datasets["validation"], topk=50)
     # True일 경우 : run passage retrieval
-<<<<<<< HEAD
-    if data_args.eval_retrieval:
-        datasets = run_sparse_retrieval(
-            tokenizer.tokenize, datasets, training_args, data_args,
-        )
-=======
     # if data_args.eval_retrieval:
     #     datasets = run_sparse_retrieval(
     #         tokenizer.tokenize,
@@ -117,11 +135,10 @@ def main():
     #         training_args,
     #         data_args,
     #     )
->>>>>>> origin/develop
 
     # eval or predict mrc model
     if training_args.do_eval or training_args.do_predict:
-        run_mrc(data_args, training_args, model_args, datasets, tokenizer, model)
+        run_mrc(data_args, training_args, model_args, datasets, mrc_tokenizer, model)
 
 
 def run_sparse_retrieval(
@@ -138,7 +155,7 @@ def run_sparse_retrieval(
     retriever = SparseRetrieval(
         tokenize_fn=tokenize_fn, data_path=data_path, context_path=context_path
     )
-    retriever.get_sparse_embedding() # keep bin 파일 생성
+    retriever.get_sparse_embedding()  # keep bin 파일 생성
 
     if data_args.use_faiss:
         retriever.build_faiss(num_clusters=data_args.num_clusters)
@@ -213,15 +230,11 @@ def run_mrc(
             examples[question_column_name if pad_on_right else context_column_name],
             examples[context_column_name if pad_on_right else question_column_name],
             truncation="only_second" if pad_on_right else "only_first",
-            max_length=max_seq_length, # keep min(설정값, 실제 문장 길이)
+            max_length=max_seq_length,  # keep min(설정값, 실제 문장 길이)
             stride=data_args.doc_stride,
             return_overflowing_tokens=True,
             return_offsets_mapping=True,
-<<<<<<< HEAD
             return_token_type_ids=False,  # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
-=======
-            return_token_type_ids=False, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
->>>>>>> origin/develop
             padding="max_length" if data_args.pad_to_max_length else False,
         )
 
