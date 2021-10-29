@@ -32,7 +32,7 @@ def replace_chars(context):
     return context
 
 
-datasets = load_from_disk('../data/train_dataset')
+datasets = load_from_disk('/opt/ml/data/train_dataset')
 train_df = datasets['train'].to_pandas()
 val_df = datasets['validation'].to_pandas()  
 
@@ -42,5 +42,11 @@ val_context_list = preprocess(val_df)
 train_df.drop('context', axis=1, inplace=True)
 val_df.drop('context', axis=1, inplace=True)
 
+train_df['context'] = train_context_list
+val_df['context'] = val_context_list
+
 train_df = train_df[['title', 'context', 'question', 'id', 'answers', 'document_id', '__index_level_0__']]
 val_df = val_df[['title', 'context', 'question', 'id', 'answers', 'document_id', '__index_level_0__']]
+
+train_df.to_csv('modified_train.csv')
+val_df.to_csv('modified_val.csv')
