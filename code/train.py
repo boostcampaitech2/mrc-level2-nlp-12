@@ -14,7 +14,7 @@ from transformers import (
     HfArgumentParser,
     TrainingArguments,
     set_seed,
-    IntervalStrategy
+    IntervalStrategy,
 )
 from transformers.trainer_utils import IntervalStrategy
 
@@ -48,7 +48,6 @@ def main():
     # [참고] argument를 manual하게 수정하고 싶은 경우에 아래와 같은 방식을 사용할 수 있습니다
     # training_args.per_device_train_batch_size = 4
     # print(training_args.per_device_train_batch_size)
-<<<<<<< HEAD
     # training_args.evaluation_strategy
     # training_args.logging_steps = 250
     # training_args.eval_steps = 250
@@ -58,22 +57,19 @@ def main():
     # wandb 설정
     # entity는 wandb login으로 자동 설정됩니다. entity를 변경하고 싶으시면 relogin하면 됩니다!
     os.environ["WANDB_ENTITY"] = "bc-ai-it-mrc"  # 프로젝트 명
-    os.environ["WANDB_PROJECT"] = "T2050-dev"  # 프로젝트 명 ex)T2211_dev
-=======
     training_args.evaluation_strategy = IntervalStrategy.STEPS
     training_args.logging_steps = 250
     training_args.eval_steps = 250
-    training_args.save_total_limit=5
-    training_args.load_best_model_at_end=True
-    training_args.metric_for_best_model="eval_exact_match"
-    training_args.greater_is_better=True
+    training_args.save_total_limit = 5
+    training_args.load_best_model_at_end = True
+    training_args.metric_for_best_model = "eval_exact_match"
+    training_args.greater_is_better = True
 
     # wandb 설정
     # entity는 wandb login으로 자동 설정됩니다. entity를 변경하고 싶으시면 relogin하면 됩니다!
-    os.environ["WANDB_ENTITY"] = "bc-ai-it-mrc" # 프로젝트 명
-    os.environ["WANDB_PROJECT"] = "MRC-main" # 프로젝트 명 ex)T2211_dev
-    os.environ["WANDB_NAME"] = "[박진영]" + model_args.model_name_or_path
->>>>>>> origin/develop
+    os.environ["WANDB_ENTITY"] = "bc-ai-it-mrc"  # 프로젝트 명
+    os.environ["WANDB_PROJECT"] = "T2050-dev"  # 프로젝트 명 ex)T2211_dev
+    os.environ["WANDB_NAME"] = "[김재현]" + model_args.model_name_or_path
     training_args.report_to = ["wandb"]
     # training_args.run_name = (
     #     model_args.model_name_or_path
@@ -183,11 +179,7 @@ def run_mrc(
             stride=data_args.doc_stride,
             return_overflowing_tokens=True,
             return_offsets_mapping=True,
-<<<<<<< HEAD
             return_token_type_ids=False,  # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
-=======
-            return_token_type_ids=False, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
->>>>>>> origin/develop
             padding="max_length" if data_args.pad_to_max_length else False,
         )
 
@@ -279,11 +271,7 @@ def run_mrc(
             stride=data_args.doc_stride,
             return_overflowing_tokens=True,
             return_offsets_mapping=True,
-<<<<<<< HEAD
             return_token_type_ids=False,  # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
-=======
-            return_token_type_ids=False, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
->>>>>>> origin/develop
             padding="max_length" if data_args.pad_to_max_length else False,
         )
 
@@ -337,11 +325,7 @@ def run_mrc(
             features=features,
             predictions=predictions,
             max_answer_length=data_args.max_answer_length,
-<<<<<<< HEAD
             output_dir=training_args.output_dir,
-=======
-            output_dir="./outputs/train_dataset", # train & eval 시 output_dir 중복으로 fix mapping. 추후 논의 (parser 사용 등)
->>>>>>> origin/develop
         )
         # Metric을 구할 수 있도록 Format을 맞춰줍니다.
         formatted_predictions = [
@@ -386,13 +370,10 @@ def run_mrc(
         else:
             checkpoint = None
         train_result = trainer.train(resume_from_checkpoint=checkpoint)
-<<<<<<< HEAD
-        # trainer.save_model()  # Saves the tokenizer too for easy upload
-        model.save_pretrained("./models/best_model")  # Saves model only
-=======
-        trainer.save_model(model_args.best_model)  # Saves the tokenizer too for easy upload
-        #model.save_pretrained('./models/best_model')  # Saves only model
->>>>>>> origin/develop
+        trainer.save_model(
+            model_args.best_model
+        )  # Saves the tokenizer too for easy upload
+        # model.save_pretrained('./models/best_model')  # Saves only model
 
         metrics = train_result.metrics
         metrics["train_samples"] = len(train_dataset)
