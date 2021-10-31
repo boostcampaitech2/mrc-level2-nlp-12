@@ -34,7 +34,6 @@ def replace_chars(context):
     context = context.replace('  ', ' ')
     return context
 
-
 datasets = load_from_disk('/opt/ml/data/train_dataset')
 train_df = datasets['train'].to_pandas()
 val_df = datasets['validation'].to_pandas()  
