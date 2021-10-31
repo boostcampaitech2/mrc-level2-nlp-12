@@ -26,6 +26,10 @@ def timer(name):
 
 
 class Encoder(nn.Module):
+    """question과 passage를 embedding하는데 사용할 encoder
+
+    """
+
     def __init__(self, model_checkpoint):
         super(Encoder, self).__init__()
         self.model_checkpoint = model_checkpoint
@@ -81,17 +85,12 @@ class DPRetrieval:
         self.bm25 = BM25Data(tokenizer.tokenize, wiki_data)
 
     def _load_encoder(self):
-        # q_encoder, p_encoder => 인코더 bin 파일 존재 확인
-        # if path.isfile(
-        #     path.join(self.args.q_encoder_path, "pytorch_model.bin")
-        # ) and path.isfile(path.join(self.args.p_encoder_path, "pytorch_model.bin")):
-        #     print("--- Load Encoders from Local ---")
-        #     # config = AutoConfig.from_pretrained(self.args.q_encoder_path)
-        #     q_encoder = Encoder(self.args.q_encoder_path)
-        #     p_encoder = Encoder(self.args.p_encoder_path)
-        # else:
+        """모델 체크포인트에서 encoder를 불러옴
+
+        Returns:
+            q_encoder, p_encoder: pair of q & p encoder
+        """
         print("--- Load Encoders from model checkpoint ---")
-        # config = AutoConfig.from_pretrained(self.args.model_checkpoint)
         q_encoder = Encoder(self.args.model_checkpoint)
         p_encoder = Encoder(self.args.model_checkpoint)
 

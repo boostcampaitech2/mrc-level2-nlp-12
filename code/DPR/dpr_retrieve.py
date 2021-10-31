@@ -83,6 +83,7 @@ class DensePassageRetrieval(DPRTrainer):
         return datasets
 
     def get_relevant_doc_bulk(self, queries, topk=1):
+
         print("--- Question Embedding Start ---")
 
         with torch.no_grad():

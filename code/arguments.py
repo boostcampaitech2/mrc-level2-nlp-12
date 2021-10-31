@@ -106,11 +106,10 @@ class RetrievalArguments:
         default="klue/bert-base", metadata={"help": "A model name of DPR encoder"}
     )
     q_encoder_path: str = field(
-        default="/opt/ml/code/q_encoder",
-        metadata={"help": "A path of question encoder"},
+        default="./q_encoder", metadata={"help": "A path of question encoder"},
     )
     p_encoder_path: str = field(
-        default="/opt/ml/code/p_encoder", metadata={"help": "A path of passage encoder"}
+        default="./p_encoder", metadata={"help": "A path of passage encoder"}
     )
     train_data_dir: str = field(
         default="/opt/ml/data", metadata={"help": "A path of train data directory"}
@@ -120,7 +119,7 @@ class RetrievalArguments:
     )
     lr: Optional[float] = field(default=3e-5, metadata={"help": "Learning Rate"})
     train_batch_size: Optional[float] = field(
-        default=4, metadata={"help": "Train Batch Size"}
+        default=2, metadata={"help": "Train Batch Size"}
     )
     eval_batch_size: Optional[float] = field(
         default=8, metadata={"help": "Eval Batch Size"}
@@ -130,19 +129,28 @@ class RetrievalArguments:
     #     default=1, metadata={"help": "A method to obtain memory efficiency"}
     # )
     num_neg: Optional[int] = field(
-        default=6, metadata={"help": "A number of negative in-batch"}
+        default=12, metadata={"help": "A number of negative in-batch"}
     )
     predict: Optional[bool] = field(
         default=True, metadata={"help": "A bool of prediction flag"}
     )
     neg_strategy: Optional[str] = field(
-        default="random", metadata={"help": "Negative Sampling Strategy"}
+        default="BM_Gold", metadata={"help": "Negative Sampling Strategy"}
+    )
+    use_wandb: bool = field(default=True, metadata={"help": "Whether to use wandb"})
+    eval_topk: Optional[int] = field(default=50, metadata={"help": "evaluation top k"})
+    best_save: bool = field(
+        default=True, metadata={"help": "Whether to save at best accuracy"}
+    )
+    project_name: str = field(default="tmp", metadata={"help": "wandb project name"})
+    entity_name: str = field(default="tmp", metadata={"help": "wandb entity name"})
+    retriever_run_name: str = field(default="tmp", metadata={"help": "wandb run name"})
+    retriever_type: str = field(
+        default="sparse", metadata={"help": "choose retriever type (default : sparse)"}
     )
 
 
 @dataclass
 class ElasticSearchArguments:
-    index_name: str = field(
-        default='dev', metadata={"help": "A name of index in ES"}
-    )
+    index_name: str = field(default="dev", metadata={"help": "A name of index in ES"})
 

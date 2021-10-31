@@ -31,6 +31,10 @@ def timer(name):
 
 
 class DPRDataset:
+    """
+        DPR에 필요한 data 불러옴
+    """
+
     def __init__(self, wiki_data_path, datasets_path):
         self.wiki_data_path = wiki_data_path
         self.datasets_path = datasets_path

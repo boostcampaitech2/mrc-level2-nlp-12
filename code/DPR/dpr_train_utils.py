@@ -40,15 +40,20 @@ class DPRTrainer(DPRetrieval):
         self.q_encoder = None
 
     def load_passage_embedding(self):
-        # if path.isfile("question_embedding.bin"):
-        #     with open("question_embedding.bin", "rb") as file:
-        #         self.q_embedding = pickle.load(file)
-
+        """ 저장되어있는 passage_embedding을 불러옴
+        """
         if path.isfile("passage_embedding.bin"):
             with open("passage_embedding.bin", "rb") as file:
                 self.p_embedding = pickle.load(file)
 
     def set_embedding(self, queries, q_encoder=None, p_encoder=None):
+        """주어진 q_encoder, p_encoder를 바탕으로 question과 passage를 embedding
+
+        Args:
+            queries (list): questions
+            q_encoder (nn.Module, optional): question encoder. Defaults to None.
+            p_encoder (nn.Module, optional): passage encoder. Defaults to None.
+        """
         print("--- Question Embedding and Passage Embedding Start ---")
         if q_encoder == None and p_encoder == None:
             q_encoder, p_encoder = self._load_encoder()
@@ -303,6 +308,7 @@ class DPRTrainer(DPRetrieval):
             os.makedirs(self.args.p_encoder_path)
         if not path.isdir(self.args.q_encoder_path):
             os.makedirs(self.args.q_encoder_path)
+
         if self.args.best_save:
             if self.best_acc < acc:
                 self.best_acc = acc
