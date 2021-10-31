@@ -59,10 +59,10 @@ def main():
     ) = parser.parse_args_into_dataclasses()
 
     training_args.do_train = True
-    data_args.dataset_name = "/opt/ml/data/test_dataset"
-    # model_args.config_name = "klue/roberta-large"
-    model_args.tokenizer_name = "klue/roberta-large"
-    model_args.model_name_or_path = "./models/best_model"
+    # data_args.dataset_name = "/opt/ml/data/test_dataset"
+    # # model_args.config_name = "klue/roberta-large"
+    # model_args.tokenizer_name = "klue/roberta-large"
+    # model_args.model_name_or_path = "./models/best_model"
 
     print(f"model is from {model_args.model_name_or_path}")
     print(f"data is from {data_args.dataset_name}")

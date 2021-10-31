@@ -31,7 +31,7 @@ def main(
         weight_decay=0.01,
         gradient_accumulation_steps=4,  # 메모리 효율
         logging_steps=100,
-        eval_steps=100,
+        eval_steps=training_args.eval_steps,
     )
 
     trainer.train(
