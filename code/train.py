@@ -4,7 +4,7 @@ import sys
 
 from typing import List, Callable, NoReturn, NewType, Any
 import dataclasses
-from datasets import load_metric, load_from_disk, Dataset, DatasetDict
+from datasets import load_metric, load_from_disk, Dataset, DatasetDict, load_dataset
 
 from transformers import AutoConfig, AutoModelForQuestionAnswering, AutoTokenizer
 
@@ -29,6 +29,7 @@ from arguments import (
 )
 
 import wandb
+from preprocessing import *
 
 
 logger = logging.getLogger(__name__)
@@ -65,6 +66,8 @@ def main():
     set_seed(training_args.seed)
 
     datasets = load_from_disk(data_args.dataset_name)
+    # datasets = load_dataset('csv', data_files={'train': '/opt/ml/data/new_train_dataset/modified_train.csv', 
+    #                                            'validation': '/opt/ml/data/new_train_dataset/modified_val.csv'})
     print(datasets)
 
     # AutoConfig를 이용하여 pretrained model 과 tokenizer를 불러옵니다.
@@ -132,12 +135,46 @@ def run_mrc(
     )
 
     # Train preprocessing / 전처리를 진행합니다.
+    def preprocess(examples):
+        context_list = []
+        answers = []
+        for i in range(len(examples['title'])):
+            start_idx = examples['answers'][i]['answer_start'][0]
+            len_answer = len(examples['answers'][i]['text'][0])
+
+            answer = examples['context'][i][start_idx:start_idx+len_answer]
+            context1 = examples['context'][i][:start_idx]
+            context2 = examples['context'][i][start_idx+len_answer:]
+
+            context1 = replace_chars(context1)
+            context2 = replace_chars(context2)
+            
+            answers.append({'answer_start':[len(context1)], 'text':[answer]})
+            context_list.append(context1 + answer + context2)
+        
+        examples['context'] = context_list
+        examples['answers'] = answers
+
+        return examples
+
+    def replace_chars(context):
+        context = context.replace('\n', ' ')
+        context = context.replace('\\n', ' ')
+        context = context.replace('  ', ' ')
+        return context
+
     def prepare_train_features(examples):
         # truncation과 padding(length가 짧을때만)을 통해 toknization을 진행하며, stride를 이용하여 overflow를 유지합니다.
         # 각 example들은 이전의 context와 조금씩 겹치게됩니다.
+        
+        examples = preprocess(examples)
+        
+        questions = examples[question_column_name if pad_on_right else context_column_name]
+        contexts = examples[context_column_name if pad_on_right else question_column_name]
+
         tokenized_examples = tokenizer(
-            examples[question_column_name if pad_on_right else context_column_name],
-            examples[context_column_name if pad_on_right else question_column_name],
+            questions,
+            contexts,
             truncation="only_second" if pad_on_right else "only_first",
             max_length=max_seq_length,
             stride=data_args.doc_stride,
@@ -227,9 +264,15 @@ def run_mrc(
     def prepare_validation_features(examples):
         # truncation과 padding(length가 짧을때만)을 통해 toknization을 진행하며, stride를 이용하여 overflow를 유지합니다.
         # 각 example들은 이전의 context와 조금씩 겹치게됩니다.
+
+        examples = preprocess(examples)
+        
+        questions = examples[question_column_name if pad_on_right else context_column_name]
+        contexts = examples[context_column_name if pad_on_right else question_column_name]
+
         tokenized_examples = tokenizer(
-            examples[question_column_name if pad_on_right else context_column_name],
-            examples[context_column_name if pad_on_right else question_column_name],
+            questions,
+            contexts,
             truncation="only_second" if pad_on_right else "only_first",
             max_length=max_seq_length,
             stride=data_args.doc_stride,
