@@ -15,10 +15,7 @@ class ModelArguments:
         },
     )
     best_model: str = field(
-        default="./models/best_model",
-        metadata={
-            "help": "Path to best model"
-        },
+        default="./models/best_model", metadata={"help": "Path to best model"},
     )
     config_name: Optional[str] = field(
         default=None,
@@ -32,7 +29,6 @@ class ModelArguments:
             "help": "Pretrained tokenizer name or path if not the same as model_name"
         },
     )
-
 
 
 @dataclass
@@ -101,68 +97,43 @@ class DataTrainingArguments:
 
 @dataclass
 class RetrievalArguments:
-    is_bm25: bool = field(
-        default=False, metadata={"help": "Whether to use BM25"}
-    )
-    is_dpr: bool = field(
-        default=True, metadata={"help": "Whether to use DPR"}
-    )
+    is_bm25: bool = field(default=False, metadata={"help": "Whether to use BM25"})
+    is_dpr: bool = field(default=True, metadata={"help": "Whether to use DPR"})
     train_dataset_name: str = field(
-        default='squad', metadata={"help": "Whether to use local dataset or not"}
+        default="squad", metadata={"help": "Whether to use local dataset or not"}
     )
     model_checkpoint: str = field(
-        default='klue/bert-base', metadata={"help": "A model name of DPR encoder"}
+        default="klue/bert-base", metadata={"help": "A model name of DPR encoder"}
     )
     q_encoder_path: str = field(
-<<<<<<< HEAD
-        default='/opt/ml/code/q_encoder', metadata={"help": "A path of question encoder"}
-    )
-    p_encoder_path: str = field(
-        default='/opt/ml/code/p_encoder', metadata={"help": "A path of passage encoder"}
-=======
         default="./q_encoder", metadata={"help": "A path of question encoder"},
     )
     p_encoder_path: str = field(
         default="./p_encoder", metadata={"help": "A path of passage encoder"}
->>>>>>> 73bf46c... MODIFY : add docstring
     )
     train_data_dir: str = field(
-        default='/opt/ml/data', metadata={"help": "A path of train data directory"}
+        default="/opt/ml/data", metadata={"help": "A path of train data directory"}
     )
     train_data_name: str = field(
-        default='train_dataset', metadata={"help": "A name of train data directory"}
+        default="train_dataset", metadata={"help": "A name of train data directory"}
     )
-    lr: Optional[float] = field(
-        default=3e-5, metadata={"help": "Learning Rate"}
-    )
+    lr: Optional[float] = field(default=3e-5, metadata={"help": "Learning Rate"})
     train_batch_size: Optional[float] = field(
-<<<<<<< HEAD
-        default=8, metadata={"help": "Train Batch Size"}
-=======
         default=2, metadata={"help": "Train Batch Size"}
->>>>>>> 73bf46c... MODIFY : add docstring
     )
     eval_batch_size: Optional[float] = field(
         default=8, metadata={"help": "Eval Batch Size"}
     )
-    epochs: Optional[int] = field(
-        default=2, metadata={"help": "Epochs"}
-    )
+    epochs: Optional[int] = field(default=2, metadata={"help": "Epochs"})
     # gradient_accumulation_steps: Optional[int] = field(
     #     default=1, metadata={"help": "A method to obtain memory efficiency"}
     # )
     num_neg: Optional[int] = field(
-<<<<<<< HEAD
-        default=2, metadata={"help": "A number of negative in-batch"}
-=======
         default=12, metadata={"help": "A number of negative in-batch"}
->>>>>>> 73bf46c... MODIFY : add docstring
     )
     predict: Optional[bool] = field(
         default=True, metadata={"help": "A bool of prediction flag"}
     )
-<<<<<<< HEAD
-=======
     neg_strategy: Optional[str] = field(
         default="BM_Gold", metadata={"help": "Negative Sampling Strategy"}
     )
@@ -178,7 +149,6 @@ class RetrievalArguments:
         default="sparse", metadata={"help": "choose retriever type (default : sparse)"}
     )
 
->>>>>>> 73bf46c... MODIFY : add docstring
 
 @dataclass
 class ElasticSearchArguments:
