@@ -97,3 +97,60 @@ class DataTrainingArguments:
     use_faiss: bool = field(
         default=False, metadata={"help": "Whether to build with faiss"}
     )
+
+
+@dataclass
+class MaskedLanguageModelArguments:
+    """
+    Arguments pertaining to MLM.
+    """
+
+    model_name: str = field(
+        default="klue/roberta-large",
+        metadata={
+            "help": "model identifier from huggingface.co/models"
+        },
+    )
+    do_whole_word_mask: bool = field(
+        default=False,
+        metadata={
+            "help": "If set to true, whole words are masked."
+        },
+    )
+    mlm_probability: Optional[float] = field(
+        default=0.15,
+        metadata={
+            "help": "Probability that a word is replaced by a [MASK] token."
+        },
+    )
+    do_validation: bool = field(
+        default=True,
+        metadata={
+            "help": "If set to False, train/validation data will be merged into train data."
+        },
+    )
+    max_seq_length: int = field(
+        default=40,
+        metadata={
+            "help": "The maximum total input sequence length after tokenization. Sequences longer "
+            "than this will be truncated, sequences shorter will be padded."
+        }
+    )
+    data_dir: Optional[str] = field(
+        default="../data/train_dataset",
+        metadata={
+            "help": "training data directory name."
+        },
+    )
+    logging_dir: Optional[str] = field(
+        default="./models/pretrained_mlm/logs",
+        metadata={
+            "help": "training log directory name."
+        },
+    )
+    output_dir: Optional[str] = field(
+        default="./models/pretrained_mlm",
+        metadata={
+            "help": "training output directory name."
+        },
+    )
