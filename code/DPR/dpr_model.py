@@ -99,11 +99,14 @@ class DPRetrieval:
     def _load_dataset(self):
         # negative in-batch ready
 
-        if path.isfile("final_train_dataset.bin"):
+        if path.isfile(
+            "final_train_dataset.bin"
+        ):  # 이전에 in-batch로 만든 train dataset이 있을 경우 불러옴
             print("---- load saved dataset ----")
             with open("final_train_dataset.bin", "rb") as file:
                 final_train_dataset = pickle.load(file)
             return final_train_dataset
+
         else:
             print("---- set dataset ----")
             corpus = np.array(self.train_dataset["context"])
