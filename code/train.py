@@ -28,6 +28,8 @@ from arguments import (
     DataTrainingArguments,
 )
 
+import wandb
+
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +143,7 @@ def run_mrc(
             stride=data_args.doc_stride,
             return_overflowing_tokens=True,
             return_offsets_mapping=True,
-            #return_token_type_ids=False, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
+            return_token_type_ids=False, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
             padding="max_length" if data_args.pad_to_max_length else False,
         )
 
@@ -233,7 +235,7 @@ def run_mrc(
             stride=data_args.doc_stride,
             return_overflowing_tokens=True,
             return_offsets_mapping=True,
-            #return_token_type_ids=False, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
+            return_token_type_ids=False, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
             padding="max_length" if data_args.pad_to_max_length else False,
         )
 
@@ -366,4 +368,5 @@ def run_mrc(
 
 
 if __name__ == "__main__":
+    wandb.init(project='T2130-dev', entity='bc-ai-it-mrc', name='klue/roberta-base default')
     main()
