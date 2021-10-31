@@ -7,9 +7,7 @@ import pandas as pd
 from contextlib import contextmanager
 from tqdm.auto import tqdm
 from datasets import Sequence, Value, Features, DatasetDict, Dataset
-from fuzzywuzzy import fuzz
 import torch
-import pickle
 
 
 @contextmanager
@@ -34,48 +32,8 @@ class DensePassageRetrieval(DPRTrainer):
         )
         doc_indices = np.array(doc_indices)
         doc_indices = doc_indices.tolist()
-        # doc_scores, doc_indices = self.get_relevant_doc_bulk(
-        #     query_or_dataset["question"], topk=max(40 + topk, alpha * topk)
-        # )
+
         for idx, example in enumerate(tqdm(query_or_dataset, desc="Retrieval: ")):
-
-            #     doc_scores_topk = [doc_scores[idx][0]]
-            #     doc_indices_topk = [doc_indices[idx][0]]
-
-            #     pointer = 1
-
-            #     while len(doc_indices_topk) != topk:
-            #         is_non_duplicate = True
-            #         new_text_idx = doc_indices[idx][pointer]
-            #         new_text = self.contexts[new_text_idx]
-
-            #         for d_id in doc_indices_topk:
-            #             if fuzz.ratio(self.contexts[d_id], new_text) > 65:
-            #                 is_non_duplicate = False
-            #                 break
-
-            #         if is_non_duplicate:
-            #             doc_scores_topk.append(doc_scores[idx][pointer])
-            #             doc_indices_topk.append(new_text_idx)
-
-            #         pointer += 1
-            #         if pointer == max(40 + topk, alpha * topk):
-            #             break
-
-            #     assert len(doc_indices_topk) == topk, "중복 없는 topk 추출을 위해 alpha 값을 증가시켜 주세요."
-
-            #     for doc_id in range(topk):
-            #         doc_idx = doc_indices_topk[doc_id]
-            #         tmp = {
-            #             "question": example["question"],
-            #             "id": example["id"],
-            #             "context_id": self.context_ids[doc_idx],  # retrieved id
-            #             "context": self.contexts[doc_idx],  # retrieved passage
-            #         }
-            #         if "context" in example.keys() and "answers" in example.keys():
-            #             tmp["original_context"] = example["context"]  # original passage
-            #             tmp["answers"] = example["answers"]  # original answer
-            #         total.append(tmp)
 
             tmp = {
                 # Query와 해당 id를 반환합니다.
@@ -100,7 +58,6 @@ class DensePassageRetrieval(DPRTrainer):
                     "context": Value(dtype="string", id=None),
                     "id": Value(dtype="string", id=None),
                     "question": Value(dtype="string", id=None),
-                    # "context_id": Value(dtype="int32", id=None),
                 }
             )
         else:
@@ -141,17 +98,13 @@ class DensePassageRetrieval(DPRTrainer):
             q_embedding = self.q_encoder(**q_seqs_val)
             q_embedding.squeeze_()
             self.q_embedding = q_embedding.cpu().detach().numpy()
-        # # question embedding save
-        # with open("question_embedding.bin", "wb") as file:
-        #     pickle.dump(self.q_embedding, file)
-        # p_embedding: numpy, q_embedding: numpy
+
         print("--- Sim Result ---")
         result = torch.matmul(
             torch.tensor(self.q_embedding), torch.tensor(self.p_embedding.T)
         )
         print(result.shape)
 
-        # doc_indices = np.argsort(result, axis=1)[:, -topk:][:, ::-1]
         tmp_indices = torch.argsort(result, dim=1, descending=True).squeeze()
 
         doc_indices = []

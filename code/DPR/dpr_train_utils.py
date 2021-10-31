@@ -30,24 +30,19 @@ def timer(name):
     print(f"[{name}] done in {time.time() - t0:.3f} s")
 
 
-class DPRTrainer:
-    def __init__(
-        self, args, tokenizer, wiki_dataset, train_dataset, eval_dataset
-    ) -> None:
-        self.args = args
+class DPRTrainer(DPRetrieval):
+    def __init__(self, args, tokenizer, wiki_data, train_data, eval_data):
+        super().__init__(args, tokenizer, wiki_data, train_data, eval_data)
         self.p_embedding = None
         self.q_embedding = None
-        self.tokenizer = tokenizer
-        self.dpr = DPRetrieval(
-            args, tokenizer, wiki_dataset, train_dataset, eval_dataset
-        )
-        self.contexts = self.dpr.contexts
-        self.context_ids = self.dpr.context_ids
+        self.best_acc = 0
+        self.p_encoder = None
+        self.q_encoder = None
 
-    def load_embedding(self):
-        if path.isfile("question_embedding.bin"):
-            with open("question_embedding.bin", "rb") as file:
-                self.q_embedding = pickle.load(file)
+    def load_passage_embedding(self):
+        # if path.isfile("question_embedding.bin"):
+        #     with open("question_embedding.bin", "rb") as file:
+        #         self.q_embedding = pickle.load(file)
 
         if path.isfile("passage_embedding.bin"):
             with open("passage_embedding.bin", "rb") as file:
@@ -56,8 +51,7 @@ class DPRTrainer:
     def set_embedding(self, queries, q_encoder=None, p_encoder=None):
         print("--- Question Embedding and Passage Embedding Start ---")
         if q_encoder == None and p_encoder == None:
-            q_encoder, p_encoder = self.dpr._load_encoder()
-        # train_dataset = self.dpr._load_dataset()
+            q_encoder, p_encoder = self._load_encoder()
         print("--- Passage Embedding Start ---")
         with torch.no_grad():
             p_encoder.eval()
@@ -99,17 +93,25 @@ class DPRTrainer:
 
         self.q_embedding = q_embedding.cpu().detach().numpy()
         self.q_encoder = q_encoder
+
         # question embedding save
         with open("question_embedding.bin", "wb") as file:
             pickle.dump(self.q_embedding, file)
 
-    def train(self, args, p_encoder, q_encoder, **kwargs):
+    def train(self, args, **kwargs):
         if self.args.use_wandb:
             self.init_wandb(**kwargs)
             self.run.config.update(self.args)
             self.log_table = []
+        if self.q_encoder == None or self.p_encoder == None:
+            self.q_encoder, self.p_encoder = self._load_encoder()
+
         p_encoder, q_encoder = self._train(
-            args, self.dpr._load_dataset(), p_encoder, q_encoder, self.args.num_neg
+            args,
+            self._load_dataset(),
+            self.p_encoder,
+            self.q_encoder,
+            self.args.num_neg,
         )
 
     def _train(self, args, train_dataset, p_encoder, q_encoder, num_neg=2):
@@ -183,9 +185,6 @@ class DPRTrainer:
                 for batch in tepoch:
                     if global_step % args.eval_steps == 0 and global_step != 0:
                         self.eval(p_encoder, q_encoder, global_step)
-
-                    if global_step > 700:
-                        break
                     p_encoder.train()
                     q_encoder.train()
 
@@ -217,7 +216,6 @@ class DPRTrainer:
                     # (batch_size, emb_dim)
                     q_outputs = q_encoder(**q_inputs)
 
-                    # p_outputs = p_outputs.view(batch_size, -1, num_neg + 1)
                     p_outputs = torch.transpose(
                         p_outputs.view(batch_size, num_neg + 1, -1), 1, 2
                     )
@@ -226,12 +224,9 @@ class DPRTrainer:
                     # (batch_size, num_neg + 1)
                     sim_scores = torch.bmm(q_outputs, p_outputs).squeeze()
                     sim_scores = sim_scores.view(batch_size, -1)
-                    # print(f"sim_scores : {sim_scores}")
                     sim_scores = F.log_softmax(sim_scores, dim=1)
-                    # print(f"softmax_sim_scores : {sim_scores}")
 
                     loss = F.nll_loss(sim_scores, targets)
-                    # print(f"loss : {loss}")
 
                     tepoch.set_postfix(loss=f"{str(loss.item())}")
                     losses += loss
@@ -254,22 +249,14 @@ class DPRTrainer:
                     torch.cuda.empty_cache()
                     del p_inputs, q_inputs
 
-        # 인코더 저장
-        if path.isfile("q_encoder/config.json"):
-            os.remove("q_encoder/config.json")
-            os.remove("q_encoder/pytorch_model.bin")
-        if path.isfile("p_encoder/config.json"):
-            os.remove("p_encoder/config.json")
-            os.remove("p_encoder/pytorch_model.bin")
-        # q_encoder.save_pretrained("q_encoder/")
-        # p_encoder.save_pretrained("p_encoder/")
+        self.eval(p_encoder, q_encoder, global_step)
         return p_encoder, q_encoder
 
     def eval(self, p_encoder, q_encoder, global_step):
 
         print("-" * 15 + " evaluation start " + "-" * 15)
         metric_key_prefix = "eval"
-        datasets = self.dpr.eval_dataset
+        datasets = self.eval_dataset
 
         top_k = self.args.eval_topk
 
@@ -300,9 +287,6 @@ class DPRTrainer:
                 data=self.log_table,
             )
         acc = cnt / len(doc_indices) * 100
-        # loss_mean = losses / global_step
-        # acc = collect_sum / global_step * batch_size * 100
-        # loss_mean = losses / global_step * batch_size
         metric = {"accuarcy": acc}
 
         for key in list(metric.keys()):
@@ -313,17 +297,34 @@ class DPRTrainer:
         if self.args.use_wandb:
             self.run.log(metric)
             self.run.log({"valid_samples": self.text_table})
+
         # 인코더 저장
-        if path.isfile("q_encoder/config.json"):
-            os.remove("q_encoder/config.json")
-            os.remove("q_encoder/pytorch_model.bin")
-        if path.isfile("p_encoder/config.json"):
-            os.remove("p_encoder/config.json")
-            os.remove("p_encoder/pytorch_model.bin")
-        torch.save(p_encoder.state_dict(), os.path.join("p_encoder", f"p_encoder.pt"))
-        torch.save(q_encoder.state_dict(), os.path.join("q_encoder", f"q_encoder.pt"))
-        # q_encoder.save_pretrained("q_encoder/")
-        # p_encoder.save_pretrained("p_encoder/")
+        if not path.isdir(self.args.p_encoder_path):
+            os.makedirs(self.args.p_encoder_path)
+        if not path.isdir(self.args.q_encoder_path):
+            os.makedirs(self.args.q_encoder_path)
+        if self.args.best_save:
+            if self.best_acc < acc:
+                self.best_acc = acc
+                torch.save(
+                    p_encoder.state_dict(),
+                    os.path.join(self.args.p_encoder_path, f"p_encoder.pt"),
+                )
+                torch.save(
+                    q_encoder.state_dict(),
+                    os.path.join(self.args.q_encoder_path, f"q_encoder.pt"),
+                )
+                print("--- save Encoder ---")
+        else:
+            torch.save(
+                p_encoder.state_dict(),
+                os.path.join(self.args.p_encoder_path, f"p_encoder.pt"),
+            )
+            torch.save(
+                q_encoder.state_dict(),
+                os.path.join(self.args.q_encoder_path, f"q_encoder.pt"),
+            )
+
         return acc
 
     def get_relevant_doc_bulk(self, queries, topk=1):

@@ -31,30 +31,11 @@ class Encoder(nn.Module):
         self.model_checkpoint = model_checkpoint
         config = AutoConfig.from_pretrained(self.model_checkpoint)
         self.model = AutoModel.from_pretrained(model_checkpoint, config=config)
-        # self.init_weights()
 
     def forward(self, input_ids, attention_mask=None, token_type_ids=None):
         outputs = self.model(input_ids, attention_mask, token_type_ids)
         pooled_output = outputs[1]
         return pooled_output
-
-
-# class Encoder(BertPreTrainedModel):
-#     """A class for encoding questions and passages
-#     """
-
-#     def __init__(self, config):
-#         super(Encoder, self).__init__(config)
-#         self.bert = BertModel(config)
-#         self.init_weights()
-
-#     def forward(self, input_ids, attention_mask=None, token_type_ids=None):
-#         outputs = self.bert(
-#             input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids
-#         )
-#         # embedded vec
-#         pooled_output = outputs[1]
-#         return pooled_output
 
 
 class BertEncoder(BertPreTrainedModel):
@@ -101,38 +82,39 @@ class DPRetrieval:
 
     def _load_encoder(self):
         # q_encoder, p_encoder => 인코더 bin 파일 존재 확인
-        if path.isfile(
-            path.join(self.args.q_encoder_path, "pytorch_model.bin")
-        ) and path.isfile(path.join(self.args.p_encoder_path, "pytorch_model.bin")):
-            print("--- Load Encoders from Local ---")
-            # config = AutoConfig.from_pretrained(self.args.q_encoder_path)
-            q_encoder = Encoder(self.args.q_encoder_path)
-            p_encoder = Encoder(self.args.p_encoder_path)
-        else:
-            print("--- Load Encoders from Server ---")
-            # config = AutoConfig.from_pretrained(self.args.model_checkpoint)
-            q_encoder = Encoder(self.args.model_checkpoint)
-            p_encoder = Encoder(self.args.model_checkpoint)
+        # if path.isfile(
+        #     path.join(self.args.q_encoder_path, "pytorch_model.bin")
+        # ) and path.isfile(path.join(self.args.p_encoder_path, "pytorch_model.bin")):
+        #     print("--- Load Encoders from Local ---")
+        #     # config = AutoConfig.from_pretrained(self.args.q_encoder_path)
+        #     q_encoder = Encoder(self.args.q_encoder_path)
+        #     p_encoder = Encoder(self.args.p_encoder_path)
+        # else:
+        print("--- Load Encoders from model checkpoint ---")
+        # config = AutoConfig.from_pretrained(self.args.model_checkpoint)
+        q_encoder = Encoder(self.args.model_checkpoint)
+        p_encoder = Encoder(self.args.model_checkpoint)
 
         return q_encoder, p_encoder
 
     def _load_dataset(self):
         # negative in-batch ready
-        # corpus = list(set([example["context"] for example in self.train_dataset]))
-        # corpus = np.array(corpus)
 
         if path.isfile("final_train_dataset.bin"):
+            print("---- load saved dataset ----")
             with open("final_train_dataset.bin", "rb") as file:
                 final_train_dataset = pickle.load(file)
             return final_train_dataset
         else:
+            print("---- set dataset ----")
             corpus = np.array(self.train_dataset["context"])
             cor_titles = np.array(self.train_dataset["title"])
             p_with_neg = []
             titles = []
             if self.args.neg_strategy == "random":
-                for t, c in zip(
-                    self.train_dataset["title"], self.train_dataset["context"]
+                for t, c in tqdm.tqdm(
+                    zip(self.train_dataset["title"], self.train_dataset["context"]),
+                    desc="setting in-batch dataset (option: random sampling)",
                 ):
                     titles.append(t)
                     while True:
@@ -156,7 +138,7 @@ class DPRetrieval:
                             self.train_dataset["context"],
                             self.train_dataset["question"],
                         ),
-                        desc="setting in-batch dataset",
+                        desc="setting in-batch dataset (option: BM Gold neg sampling)",
                     ):
                         titles.append(t)
                         while True:
@@ -228,9 +210,6 @@ class DPRetrieval:
 
     def _load_eval_dataset(self):
 
-        # negative in-batch ready
-        # corpus = list(set([example["context"] for example in self.eval_dataset]))
-        # corpus = np.array(corpus)
         if path.isfile("final_valid_dataset.bin"):
             with open("final_valid_dataset.bin", "rb") as file:
                 final_valid_dataset = pickle.load(file)
@@ -287,14 +266,6 @@ class DPRetrieval:
                             p_with_neg.extend(p_neg)
                             titles.extend(p_neg_title)
                             break
-
-            # t_seqs = self.tokenizer(
-            #     self.eval_dataset["title"],
-            #     padding="max_length",
-            #     truncation=True,
-            #     max_length=512,
-            #     return_tensors="pt",
-            # )
 
             q_seqs = self.tokenizer(
                 self.eval_dataset["question"],

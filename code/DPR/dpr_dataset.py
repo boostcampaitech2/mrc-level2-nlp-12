@@ -73,7 +73,7 @@ class BM25Data:
         self,
         tokenize_fn,
         wiki_data=None,
-        data_path: Optional[str] = "../../data/",
+        data_path: Optional[str] = "opt/ml/data/",
         context_path: Optional[str] = "wikipedia_documents.json",
     ) -> NoReturn:
         """

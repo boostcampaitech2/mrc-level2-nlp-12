@@ -101,40 +101,35 @@ def main():
         from_tf=bool(".ckpt" in model_args.model_name_or_path),
         config=config,
     )
-    dpr_tokenizer = AutoTokenizer.from_pretrained(
-        retrieval_args.model_checkpoint, use_fast=True,
-    )
 
     # keep retrieval 확인
-    # retrieval = DprRetrieval(args=retrieval_args, tokenizer=dpr_tokenizer)
-    # retrieval.proc_embedding()
-    # datasets = retrieval.retrieve(query_or_dataset=datasets["validation"], topk=100)
+    if retrieval_args.retriever_type == "sparse":
+        datasets = run_sparse_retrieval(
+            mrc_tokenizer.tokenize, datasets, training_args, data_args,
+        )
 
-    dpr_datasets = DPRDataset(
-        "/opt/ml/data/wikipedia_documents.json", "/opt/ml/data/test_dataset"
-    )
-    wiki_data = dpr_datasets.load_wiki_data()
-    # q_encoder_config = AutoConfig.from_pretrained(
-    #     "/opt/ml/mrc-level2-nlp-12/code/q_encoder"
-    # )
-    q_encoder = Encoder("klue/bert-base")
-    # p_encoder = Encoder("klue/bert-base")
-    q_encoder.load_state_dict(torch.load("q_encoder/q_encoder.pt"))
-    # p_encoder.load_state_dict(torch.load("p_encoder/p_encoder.pt"))
-    # q_encoder = Encoder("/opt/ml/mrc-level2-nlp-12/code/q_encoder", q_encoder_config)
-    retrieval = DensePassageRetrieval(
-        retrieval_args, dpr_tokenizer, wiki_data, None, None, q_encoder
-    )
-    retrieval.load_embedding()
-    datasets = retrieval.retrieve(query_or_dataset=datasets["validation"], topk=50)
-    # True일 경우 : run passage retrieval
-    # if data_args.eval_retrieval:
-    #     datasets = run_sparse_retrieval(
-    #         tokenizer.tokenize,
-    #         datasets,
-    #         training_args,
-    #         data_args,
-    #     )
+    elif retrieval_args.retriever_type == "dense":
+        dpr_tokenizer = AutoTokenizer.from_pretrained(
+            retrieval_args.model_checkpoint, use_fast=True,
+        )
+        dpr_datasets = DPRDataset(
+            "/opt/ml/data/wikipedia_documents.json", "/opt/ml/data/test_dataset"
+        )
+        wiki_data = dpr_datasets.load_wiki_data()
+        q_encoder = Encoder("klue/bert-base")
+        q_encoder.load_state_dict(
+            torch.load(retrieval_args.q_encoder_path + "/q_encoder.pt")
+        )
+        retrieval = DensePassageRetrieval(
+            retrieval_args, dpr_tokenizer, wiki_data, None, None, q_encoder
+        )
+        retrieval.load_passage_embedding()
+        datasets = retrieval.retrieve(query_or_dataset=datasets["validation"], topk=50)
+
+    else:
+        raise print(
+            f"retriever type 지정이 잘못되었습니다. 현재 입력한 retriever type : {retrieval_args.retriever_type} (option : sparse, dense)"
+        )
 
     # eval or predict mrc model
     if training_args.do_eval or training_args.do_predict:
