@@ -81,10 +81,14 @@ class DPRTrainer(DPRetrieval):
         self.p_embedding = p_embedding
         self.p_encoder = p_encoder
 
-        with open(
-            path.join(self.args.p_encoder_path, "passage_embedding.bin"), "wb"
-        ) as file:
-            pickle.dump(self.p_embedding, file)
+        if not self.args.best_save:
+            if not path.isdir(self.args.p_encoder_path):
+                os.mkdir(self.args.p_encoder_path)
+
+            with open(
+                path.join(self.args.p_encoder_path, "passage_embedding.bin"), "wb"
+            ) as file:
+                pickle.dump(self.p_embedding, file)
 
         print("--- Question Embedding Start ---")
         with torch.no_grad():
@@ -104,6 +108,8 @@ class DPRTrainer(DPRetrieval):
         self.q_encoder = q_encoder
 
         # question embedding save
+        if not path.isdir(self.args.q_encoder_path):
+            os.mkdir(self.args.q_encoder_path)
         with open("question_embedding.bin", "wb") as file:
             pickle.dump(self.q_embedding, file)
 
@@ -325,6 +331,13 @@ class DPRTrainer(DPRetrieval):
                     os.path.join(self.args.q_encoder_path, f"q_encoder.pt"),
                 )
                 print("--- save Encoder ---")
+                if not path.isdir(self.args.p_encoder_path):
+                    os.mkdir(self.args.p_encoder_path)
+                with open(
+                    path.join(self.args.p_encoder_path, "passage_embedding.bin"), "wb"
+                ) as file:
+                    pickle.dump(self.p_embedding, file)
+                print("--- save p_embedding ---")
         else:
             torch.save(
                 p_encoder.state_dict(),

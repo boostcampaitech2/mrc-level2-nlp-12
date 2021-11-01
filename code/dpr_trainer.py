@@ -65,5 +65,6 @@ if __name__ == "__main__":
     ) = parser.parse_args_into_dataclasses()
 
     set_seed(42)
+
     main(model_args, data_args, training_args, retrieval_args)
 
