@@ -134,7 +134,7 @@ class Preprocess():
             sent = re.sub(r"[\+á?\xc3\xa1]", "", sent)
             if sent:
                 preprcessed_sents.append(sent)
-        return preprcessed_sents
+        self.sents = preprcessed_sents
 
     def remove_press(self):
         """
