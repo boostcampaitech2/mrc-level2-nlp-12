@@ -86,7 +86,7 @@ class DPRetrieval:
 
     def _load_encoder(self):
         """모델 체크포인트에서 encoder를 불러옴
-
+        
         Returns:
             q_encoder, p_encoder: pair of q & p encoder
         """

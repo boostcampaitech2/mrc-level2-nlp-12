@@ -78,7 +78,6 @@ class DensePassageRetrieval(DPRTrainer):
                     "context_id": Value(dtype="int32", id=None),
                 }
             )
-
         datasets = DatasetDict({"validation": Dataset.from_pandas(df, features=f)})
         return datasets
 

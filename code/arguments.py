@@ -118,10 +118,10 @@ class RetrievalArguments:
         default="train_dataset", metadata={"help": "A name of train data directory"}
     )
     lr: Optional[float] = field(default=3e-5, metadata={"help": "Learning Rate"})
-    train_batch_size: Optional[float] = field(
+    train_batch_size: Optional[int] = field(
         default=2, metadata={"help": "Train Batch Size"}
     )
-    eval_batch_size: Optional[float] = field(
+    eval_batch_size: Optional[int] = field(
         default=8, metadata={"help": "Eval Batch Size"}
     )
     epochs: Optional[int] = field(default=2, metadata={"help": "Epochs"})
