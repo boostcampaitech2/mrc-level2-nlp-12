@@ -18,7 +18,9 @@ class CustomModelForQuestionAnswering(nn.Module):
         # base model
         self.config = AutoConfig.from_pretrained(model_name)
         self.model = AutoModel.from_pretrained(model_name, config=self.config)
-        self.conv1d_head = Conv1dHeadConcat(self.config.hidden_size)
+        # self.conv1d_head = Conv1dHeadSum(self.config.hidden_size)
+        # self.conv1d_head = Conv1dHeadSum(self.config.hidden_size)
+        self.conv1d_head = LSTMConv1dHeadConcat(self.config.hidden_size)
 
     # from huggingface
     def forward(
@@ -62,6 +64,8 @@ class CustomModelForQuestionAnswering(nn.Module):
         sequence_output = outputs[0] # (B x 512 x hidden size)
 
         # custom conv1d module
+        # logits = self.conv1d_head(sequence_output)
+        # logits = self.conv1d_head(sequence_output)
         logits = self.conv1d_head(sequence_output)
 
         start_logits, end_logits = logits.split(1, dim=-1)
@@ -81,7 +85,7 @@ class CustomModelForQuestionAnswering(nn.Module):
             end_positions = end_positions.clamp(0, ignored_index)
 
             loss_fct = CrossEntropyLoss(ignore_index=ignored_index)
-            start_loss = loss_fct(start_logits, start_positions)
+            start_loss = loss_fct(start_logits, start_positions) # input, target pair
             end_loss = loss_fct(end_logits, end_positions)
             total_loss = (start_loss + end_loss) / 2
 

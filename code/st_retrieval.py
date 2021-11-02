@@ -25,8 +25,8 @@ def timer(name):
     yield
     print(f"[{name}] done in {time.time() - t0:.3f} s")
 
-# [docs] https://www.sbert.net/docs/training/overview.html
-# [experiment] https://www.notion.so/sentence-transformers-v2-ff935f530e494aa183c4e0560a1f8ffe
+# https://www.sbert.net/docs/training/overview.html
+# https://www.notion.so/sentence-transformers-v2-ff935f530e494aa183c4e0560a1f8ffe
 def set_seed(random_seed):
     torch.manual_seed(random_seed)
     torch.cuda.manual_seed(random_seed)
