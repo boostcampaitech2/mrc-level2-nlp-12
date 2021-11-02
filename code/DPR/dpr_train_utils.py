@@ -284,16 +284,16 @@ class DPRTrainer(DPRetrieval):
 
         cnt = 0
         for i, ans in enumerate(ground_truth):
-            if ans in doc_indices[i]:
+            if int(ans) in doc_indices[i]:
                 cnt += 1
         n = random.randint(0, len(queries))
         if self.args.use_wandb:
             self.log_table.append(
                 [
                     global_step,
-                    ground_truth[n],
+                    int(ground_truth[n]),
                     queries[n],
-                    self.contexts[ground_truth[n]],
+                    self.contexts[int(ground_truth[n])],
                     self.contexts[doc_indices[n][0]],
                 ]
             )
