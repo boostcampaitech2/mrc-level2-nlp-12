@@ -1,26 +1,32 @@
 from torch.nn import CrossEntropyLoss
-from transformers import AutoModel, AutoConfig
+from transformers import RobertaPreTrainedModel, RobertaModel, AutoConfig, AutoModel
 from transformers.modeling_outputs import QuestionAnsweringModelOutput
 from cnn import *
 
 # https://huggingface.co/transformers/_modules/transformers/models/bert/modeling_bert.html#BertForQuestionAnswering
 # https://huggingface.co/transformers/_modules/transformers/models/roberta/modeling_roberta.html#RobertaForQuestionAnswering
 class CustomModelForQuestionAnswering(nn.Module):
+# class CustomModelForQuestionAnswering(RobertaPreTrainedModel):
     '''A class for making PLM + conv1d layer
 
     Args:
         model_name (str): a name of PLM
         is_mask (bool): a flag whether do question random masking or not
     '''
-    def __init__(self, model_name='klue/roberta-large', is_mask=False):
+
+    _keys_to_ignore_on_load_unexpected = [r"pooler"]
+    _keys_to_ignore_on_load_missing = [r"position_ids"]
+
+    def __init__(self):
         super().__init__()
 
-        # base model
-        self.config = AutoConfig.from_pretrained(model_name)
-        self.model = AutoModel.from_pretrained(model_name, config=self.config)
+        # self.roberta = RobertaModel(config, add_pooling_layer=False)
+        self.config = AutoConfig.from_pretrained('klue/roberta-large')
+        self.roberta = RobertaModel.from_pretrained('klue/roberta-large', config=self.config, add_pooling_layer=False)
+
         # self.conv1d_head = Conv1dHeadSum(self.config.hidden_size)
-        # self.conv1d_head = Conv1dHeadSum(self.config.hidden_size)
-        self.conv1d_head = LSTMConv1dHeadConcat(self.config.hidden_size)
+        self.conv1d_head = Conv1dHeadSum(self.config.hidden_size)
+        # self.conv1d_head = LSTMConv1dHeadConcat(self.config.hidden_size)
 
     # from huggingface
     def forward(
@@ -49,7 +55,7 @@ class CustomModelForQuestionAnswering(nn.Module):
         """
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
-        outputs = self.model(
+        outputs = self.roberta(
             input_ids,
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,
@@ -64,8 +70,6 @@ class CustomModelForQuestionAnswering(nn.Module):
         sequence_output = outputs[0] # (B x 512 x hidden size)
 
         # custom conv1d module
-        # logits = self.conv1d_head(sequence_output)
-        # logits = self.conv1d_head(sequence_output)
         logits = self.conv1d_head(sequence_output)
 
         start_logits, end_logits = logits.split(1, dim=-1)
