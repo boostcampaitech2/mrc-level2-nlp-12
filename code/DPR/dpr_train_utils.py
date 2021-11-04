@@ -72,6 +72,9 @@ class DPRTrainer(DPRetrieval):
                     truncation=True,
                     max_length=512,
                     return_tensors="pt",
+                    return_token_type_ids=False
+                    if "roberta" in self.args.model_checkpoint
+                    else True,  # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
                 ).to("cuda")
                 p_emb = p_encoder(**passage).to("cpu").detach().numpy()
                 p_embedding.append(p_emb)
@@ -98,8 +101,11 @@ class DPRTrainer(DPRetrieval):
                 queries,
                 padding="max_length",
                 truncation=True,
-                max_length=512,
+                max_length=100,
                 return_tensors="pt",
+                return_token_type_ids=False
+                if "roberta" in self.args.model_checkpoint
+                else True,  # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
             ).to("cuda")
             q_embedding = q_encoder(**q_seqs_val)
             q_embedding.squeeze_()
@@ -206,23 +212,43 @@ class DPRTrainer(DPRetrieval):
                     targets = torch.zeros(batch_size).long()  # positive example
                     targets = targets.to(args.device)
 
-                    p_inputs = {
-                        "input_ids": batch[0]
-                        .view(batch_size * (num_neg + 1), -1)
-                        .to(args.device),
-                        "attention_mask": batch[1]
-                        .view(batch_size * (num_neg + 1), -1)
-                        .to(args.device),
-                        "token_type_ids": batch[2]
-                        .view(batch_size * (num_neg + 1), -1)
-                        .to(args.device),
-                    }
+                    if "roberta" in self.args.model_checkpoint:
 
-                    q_inputs = {
-                        "input_ids": batch[3].to(args.device),
-                        "attention_mask": batch[4].to(args.device),
-                        "token_type_ids": batch[5].to(args.device),
-                    }
+                        p_inputs = {
+                            "input_ids": batch[0]
+                            .view(batch_size * (num_neg + 1), -1)
+                            .to(args.device),
+                            "attention_mask": batch[1]
+                            .view(batch_size * (num_neg + 1), -1)
+                            .to(args.device),
+                            # "token_type_ids": batch[2]
+                            # .view(batch_size * (num_neg + 1), -1)
+                            # .to(args.device),
+                        }
+
+                        q_inputs = {
+                            "input_ids": batch[2].to(args.device),
+                            "attention_mask": batch[3].to(args.device),
+                            # "token_type_ids": batch[5].to(args.device),
+                        }
+                    else:
+                        p_inputs = {
+                            "input_ids": batch[0]
+                            .view(batch_size * (num_neg + 1), -1)
+                            .to(args.device),
+                            "attention_mask": batch[1]
+                            .view(batch_size * (num_neg + 1), -1)
+                            .to(args.device),
+                            "token_type_ids": batch[2]
+                            .view(batch_size * (num_neg + 1), -1)
+                            .to(args.device),
+                        }
+
+                        q_inputs = {
+                            "input_ids": batch[3].to(args.device),
+                            "attention_mask": batch[4].to(args.device),
+                            "token_type_ids": batch[5].to(args.device),
+                        }
 
                     del batch
                     torch.cuda.empty_cache()
@@ -361,8 +387,11 @@ class DPRTrainer(DPRetrieval):
                     queries,
                     padding="max_length",
                     truncation=True,
-                    max_length=512,
+                    max_length=100,
                     return_tensors="pt",
+                    return_token_type_ids=False
+                    if "roberta" in self.args.model_checkpoint
+                    else True,  # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
                 ).to("cuda")
                 q_embedding = self.q_encoder(**q_seqs_val)
                 q_embedding.squeeze_()

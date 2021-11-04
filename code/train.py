@@ -67,10 +67,17 @@ def main():
 
     # wandb 설정
     # entity는 wandb login으로 자동 설정됩니다. entity를 변경하고 싶으시면 relogin하면 됩니다!
-    os.environ["WANDB_ENTITY"] = "bc-ai-it-mrc"  # 프로젝트 명
-    os.environ["WANDB_PROJECT"] = "T2050-dev"  # 프로젝트 명 ex)T2211_dev
-    os.environ["WANDB_NAME"] = "[김재현]" + model_args.model_name_or_path
-    training_args.report_to = ["wandb"]
+    wandb.init(
+        project="T2050-dev",
+        entity="bc-ai-it-mrc",
+        name="[김재현]" + model_args.model_name_or_path,
+        config=training_args,
+    )
+    training_args = wandb.config
+    # os.environ["WANDB_ENTITY"] = "bc-ai-it-mrc"  # 프로젝트 명
+    # os.environ["WANDB_PROJECT"] = "T2050-dev"  # 프로젝트 명 ex)T2211_dev
+    # os.environ["WANDB_NAME"] = "[김재현]" + model_args.model_name_or_path
+    # training_args.report_to = ["wandb"]
     # training_args.run_name = (
     #     model_args.model_name_or_path
     # )  # 프로젝트 내 모델 run 이름 ex) [ㅇㅇㅇ]klue/roberta-base

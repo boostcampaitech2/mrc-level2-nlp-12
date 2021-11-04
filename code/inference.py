@@ -39,6 +39,8 @@ from dpr import DprRetrieval, Retrieval
 
 from arguments import ModelArguments, DataTrainingArguments, RetrievalArguments
 from DPR import DensePassageRetrieval, DPRDataset
+from model import CustomModelForQuestionAnswering
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +86,7 @@ def main():
 
     # AutoConfig를 이용하여 pretrained model 과 tokenizer를 불러옵니다.
     # argument로 원하는 모델 이름을 설정하면 옵션을 바꿀 수 있습니다.
+
     config = AutoConfig.from_pretrained(
         model_args.config_name
         if model_args.config_name
@@ -100,7 +103,10 @@ def main():
         from_tf=bool(".ckpt" in model_args.model_name_or_path),
         config=config,
     )
-
+    # model = CustomModelForQuestionAnswering()
+    # model.load_state_dict(
+    #     torch.load("/opt/ml/mrc-level2-nlp-12/code/models/new_conv/pytorch_model.bin")
+    # )
     # keep retrieval 확인
     if retrieval_args.retriever_type == "sparse":
         datasets = run_sparse_retrieval(

@@ -171,8 +171,11 @@ class DPRetrieval:
                 self.train_dataset["question"],
                 padding="max_length",
                 truncation=True,
-                max_length=512,
+                max_length=100,
                 return_tensors="pt",
+                return_token_type_ids=(
+                    False if "roberta" in self.args.model_checkpoint else True
+                ),  # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
             )
             p_seqs = self.tokenizer(
                 titles,
@@ -181,6 +184,9 @@ class DPRetrieval:
                 truncation=True,
                 max_length=512,
                 return_tensors="pt",
+                return_token_type_ids=(
+                    False if "roberta" in self.args.model_checkpoint else True
+                ),  # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
             )
 
             max_len = p_seqs["input_ids"].size(-1)
@@ -190,19 +196,29 @@ class DPRetrieval:
             p_seqs["attention_mask"] = p_seqs["attention_mask"].view(
                 -1, self.args.num_neg + 1, max_len
             )
-            p_seqs["token_type_ids"] = p_seqs["token_type_ids"].view(
-                -1, self.args.num_neg + 1, max_len
-            )
+            if "roberta" not in self.args.model_checkpoint:
+                p_seqs["token_type_ids"] = p_seqs["token_type_ids"].view(
+                    -1, self.args.num_neg + 1, max_len
+                )
 
             # question and passage concat for training
-            final_train_dataset = TensorDataset(
-                p_seqs["input_ids"],
-                p_seqs["attention_mask"],
-                p_seqs["token_type_ids"],
-                q_seqs["input_ids"],
-                q_seqs["attention_mask"],
-                q_seqs["token_type_ids"],
-            )
+            if "roberta" in self.args.model_checkpoint:
+                final_train_dataset = TensorDataset(
+                    p_seqs["input_ids"],
+                    p_seqs["attention_mask"],
+                    q_seqs["input_ids"],
+                    q_seqs["attention_mask"],
+                )
+
+            else:
+                final_train_dataset = TensorDataset(
+                    p_seqs["input_ids"],
+                    p_seqs["attention_mask"],
+                    p_seqs["token_type_ids"],
+                    q_seqs["input_ids"],
+                    q_seqs["attention_mask"],
+                    q_seqs["token_type_ids"],
+                )
             with open("final_train_dataset.bin", "wb") as file:
                 pickle.dump(final_train_dataset, file)
             return final_train_dataset
@@ -270,8 +286,11 @@ class DPRetrieval:
                 self.eval_dataset["question"],
                 padding="max_length",
                 truncation=True,
-                max_length=512,
+                max_length=100,
                 return_tensors="pt",
+                return_token_type_ids=(
+                    False if "roberta" in self.args.model_checkpoint else True
+                ),  # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
             )
             p_seqs = self.tokenizer(
                 titles,
@@ -280,6 +299,9 @@ class DPRetrieval:
                 truncation=True,
                 max_length=512,
                 return_tensors="pt",
+                return_token_type_ids=(
+                    False if "roberta" in self.args.model_checkpoint else True
+                ),  # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
             )
 
             max_len = p_seqs["input_ids"].size(-1)
@@ -289,19 +311,29 @@ class DPRetrieval:
             p_seqs["attention_mask"] = p_seqs["attention_mask"].view(
                 -1, self.args.num_neg + 1, max_len
             )
-            p_seqs["token_type_ids"] = p_seqs["token_type_ids"].view(
-                -1, self.args.num_neg + 1, max_len
-            )
+            if "roberta" not in self.args.model_checkpoint:
+                p_seqs["token_type_ids"] = p_seqs["token_type_ids"].view(
+                    -1, self.args.num_neg + 1, max_len
+                )
 
             # question and passage concat for training
-            final_valid_dataset = TensorDataset(
-                p_seqs["input_ids"],
-                p_seqs["attention_mask"],
-                p_seqs["token_type_ids"],
-                q_seqs["input_ids"],
-                q_seqs["attention_mask"],
-                q_seqs["token_type_ids"],
-            )
+            if "roberta" in self.args.model_checkpoint:
+
+                final_valid_dataset = TensorDataset(
+                    p_seqs["input_ids"],
+                    p_seqs["attention_mask"],
+                    q_seqs["input_ids"],
+                    q_seqs["attention_mask"],
+                )
+            else:
+                final_valid_dataset = TensorDataset(
+                    p_seqs["input_ids"],
+                    p_seqs["attention_mask"],
+                    p_seqs["token_type_ids"],
+                    q_seqs["input_ids"],
+                    q_seqs["attention_mask"],
+                    q_seqs["token_type_ids"],
+                )
             with open("final_valid_dataset.bin", "wb") as file:
                 pickle.dump(final_valid_dataset, file)
             return final_valid_dataset

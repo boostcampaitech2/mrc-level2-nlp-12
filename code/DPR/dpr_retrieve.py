@@ -94,6 +94,9 @@ class DensePassageRetrieval(DPRTrainer):
                 truncation=True,
                 max_length=512,
                 return_tensors="pt",
+                return_token_type_ids=(
+                    False if "roberta" in self.args.model_checkpoint else True
+                ),
             ).to("cuda")
             q_embedding = self.q_encoder(**q_seqs_val)
             q_embedding.squeeze_()

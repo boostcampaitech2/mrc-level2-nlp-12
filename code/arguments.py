@@ -154,3 +154,32 @@ class RetrievalArguments:
 class ElasticSearchArguments:
     index_name: str = field(default="dev", metadata={"help": "A name of index in ES"})
 
+
+@dataclass
+class EnsembleArguments:
+    """
+    Arguments pertaining to ensemble.
+    """
+
+    nbest_dir: str = field(
+        default="./ensemble/nbests",
+        metadata={"help": "Prediction output directory. (default: ./ensemble/nbests)"},
+    )
+    output_dir: str = field(
+        default="./ensemble/predictions",
+        metadata={
+            "help": "Prediction output directory. (default: ./ensemble/predictions)"
+        },
+    )
+    do_hard_voting: bool = field(
+        default=True,
+        metadata={
+            "help": "Activate hard voting. Set False if you do not want to do hard voting."
+        },
+    )
+    do_soft_voting: bool = field(
+        default=True,
+        metadata={
+            "help": "Activate soft voting. Set False if you do not want to do soft voting."
+        },
+    )

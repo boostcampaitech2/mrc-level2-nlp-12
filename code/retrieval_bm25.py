@@ -9,7 +9,7 @@ from tqdm.auto import tqdm
 from contextlib import contextmanager
 from typing import List, Tuple, NoReturn, Any, Optional, Union
 
-from rank_bm25 import ( # https://github.com/dorianbrown/rank_bm25
+from rank_bm25 import (  # https://github.com/dorianbrown/rank_bm25
     BM25Okapi,
     BM25L,
     BM25Plus,
@@ -33,7 +33,7 @@ class BM25Retrieval:
     def __init__(
         self,
         tokenize_fn,
-        data_path: Optional[str] = "../data/",
+        data_path: Optional[str] = "../../data/",
         context_path: Optional[str] = "wikipedia_documents.json",
     ) -> NoReturn:
         """
@@ -57,9 +57,10 @@ class BM25Retrieval:
         with open(os.path.join(data_path, context_path), "r", encoding="utf-8") as f:
             wiki = json.load(f)
 
-        self.contexts = list(
-            dict.fromkeys([v["text"] for v in wiki.values()])
-        )  # key로 중복 제거, set 은 매번 순서가 바뀌므로
+        # self.contexts = list(
+        #     dict.fromkeys([v["text"] for v in wiki.values()])
+        self.contexts = [v["text"] for v in wiki.values()]
+        # key로 중복 제거, set 은 매번 순서가 바뀌므로
         print(f"Lengths of unique contexts : {len(self.contexts)}")
         self.ids = list(range(len(self.contexts)))
 
@@ -67,7 +68,7 @@ class BM25Retrieval:
         self.tokenize_fn = tokenize_fn
         self.bm25 = None
 
-    def get_sparse_embedding(self) -> NoReturn: 
+    def get_sparse_embedding(self) -> NoReturn:
         """
         Summary:
             Passage Embedding을 만들고
@@ -84,13 +85,13 @@ class BM25Retrieval:
             print("Embedding pickle load.")
         else:
             print("Build passage embedding")
-            with timer('bm25'):
+            with timer("bm25"):
                 tokenized_contexts = [self.tokenize_fn(c) for c in self.contexts]
                 self.bm25 = BM25Plus(tokenized_contexts, k1=1.2, b=0.75)
             with open(bm25_path, "wb") as file:
                 pickle.dump(self.bm25, file)
             print("Embedding pickle saved.")
-        
+
     def retrieve(
         self, query_or_dataset: Union[str, Dataset], topk: Optional[int] = 1,
     ) -> Union[Tuple[List, List], pd.DataFrame]:
@@ -182,7 +183,7 @@ class BM25Retrieval:
         doc_indices = sorted_result.tolist()[:k]
 
         return doc_score, doc_indices
-    
+
     def get_relevant_doc_bulk(
         self, queries: List, k: Optional[int] = 1
     ) -> Tuple[List, List]:
@@ -196,23 +197,22 @@ class BM25Retrieval:
         Note:
             vocab 에 없는 이상한 단어로 query 하는 경우 assertion 발생 (예) 뙣뙇?
         """
-        
+
         result = [self.bm25.get_scores(self.tokenize_fn(q)) for q in queries]
 
         if not isinstance(result, np.ndarray):
             result = np.array(result)
-        
-        doc_scores = np.partition(result, -k)[:, -k:][:, ::-1] 
+
+        doc_scores = np.partition(result, -k)[:, -k:][:, ::-1]
         ind = np.argsort(doc_scores, axis=-1)[:, ::-1]
-        doc_scores = np.sort(doc_scores, axis=-1)[:, ::-1] 
-        doc_indices = np.argpartition(result, -k)[:, -k:][:, ::-1] 
+        doc_scores = np.sort(doc_scores, axis=-1)[:, ::-1]
+        doc_indices = np.argpartition(result, -k)[:, -k:][:, ::-1]
         r, c = ind.shape
-        ind = ind + np.tile(np.arange(r).reshape(-1, 1), (1, c)) * c 
+        ind = ind + np.tile(np.arange(r).reshape(-1, 1), (1, c)) * c
         doc_indices = doc_indices.ravel()[ind].reshape(r, c)
-        
+
         return doc_scores, doc_indices
 
-         
 
 if __name__ == "__main__":
 
@@ -249,16 +249,15 @@ if __name__ == "__main__":
 
     from transformers import AutoTokenizer
 
-    tokenizer = AutoTokenizer.from_pretrained(
-        args.model_name_or_path,
-        use_fast=False,
-    )
+    tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, use_fast=False,)
 
     retriever = BM25Retrieval(
         tokenize_fn=tokenizer.tokenize,
         data_path=args.data_path,
         context_path=args.context_path,
     )
+
+    retriever.get_sparse_embedding()
 
     query = "대통령을 포함한 미국의 행정부 견제권을 갖는 국가 기관은?"
 
