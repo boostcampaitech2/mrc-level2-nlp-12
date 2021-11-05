@@ -29,12 +29,39 @@ if is_torch_tpu_available():
 
 # Huggingface의 Trainer를 상속받아 QuestionAnswering을 위한 Trainer를 생성합니다.
 class QuestionAnsweringTrainer(Trainer):
+    """
+        Inherit Huggingface Trainer and create Trainer for QuestionAnswering.
+
+        Args:
+            eval_examples (:obj:`Dataset`):
+                The dataset to use 'post_process_function' function.
+            post_process_function (:obj:``):
+                The function that post-processes the prediction value of the qa model.
+
+    """
     def __init__(self, *args, eval_examples=None, post_process_function=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.eval_examples = eval_examples
         self.post_process_function = post_process_function
 
     def evaluate(self, eval_dataset=None, eval_examples=None, ignore_keys=None, metric_key_prefix="eval"):
+        """
+        Run evaluation and returns metrics.
+
+        Args:
+            eval_dataset (:obj:`Dataset`):
+                The dataset to use for evaluation.
+            eval_examples (:obj:`Dataset`):
+                The dataset used for post-processing.
+            ignore_keys (:obj:`Lst[str]`):
+                A list of keys in the output of your model that should be ignored when gathering predictions.
+            metric_key_prefix (:obj:`str`, defaults to :obj:`"eval"`):
+                An optional prefix to be used as the metrics key prefix.
+
+        Returns:
+            metrics (dict):
+                Containing the potential metrics.
+        """
         self._memory_tracker.start()
 
         eval_dataset = self.eval_dataset if eval_dataset is None else eval_dataset
@@ -96,6 +123,26 @@ class QuestionAnsweringTrainer(Trainer):
         return metrics
 
     def predict(self, test_dataset, test_examples, ignore_keys=None):
+        """
+        Run prediction and returns predictions
+
+        Args:
+            test_dataset (:obj:`Dataset`):
+                The dataset to run the predictions on.
+            test_examples (:obj:`Dataset`):
+                The dataset used for post-processing.
+            ignore_keys(:obj:`Lst[str]`):
+                A list of keys in the output of your model that should be ignored when gathering predictions.
+
+        Returns:
+            If your compute_metrics or compute_metrics is not None, output is equal to 'evaluate' function output.
+            output (dict):
+                Containing the potential metrics.
+            but if not, make predictions using 'post_process_function' function. 
+            predictions(:obj:`Callable[EvalPrediction]`):
+                The results of post_process_function.
+
+        """
         test_dataloader = self.get_test_dataloader(test_dataset)
 
         # 일시적으로 metric computation를 불가능하게 한 상태이며, 해당 코드에서는 loop 내에서 metric 계산을 수행합니다.
