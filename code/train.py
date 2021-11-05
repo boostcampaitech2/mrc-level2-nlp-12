@@ -3,12 +3,10 @@ import os
 import sys
 import wandb
 
-from typing import List, Callable, NoReturn, NewType, Any
-import dataclasses
-from datasets import load_metric, load_from_disk, Dataset, DatasetDict
+from typing import NoReturn
+from datasets import load_metric, load_from_disk, DatasetDict
 
 from transformers import AutoConfig, AutoModelForQuestionAnswering, AutoTokenizer
-
 from transformers import (
     DataCollatorWithPadding,
     EvalPrediction,
@@ -18,6 +16,7 @@ from transformers import (
 )
 from transformers.trainer_utils import IntervalStrategy
 
+from reader.conv import custom_model
 from utils_qa import postprocess_qa_predictions, check_no_error
 from trainer_qa import QuestionAnsweringTrainer
 from arguments import (
@@ -53,6 +52,7 @@ def main():
     # entity는 wandb login으로 자동 설정됩니다. entity를 변경하고 싶으시면 relogin하면 됩니다!
     os.environ["WANDB_ENTITY"] = "채워주세요" # 프로젝트 명 e.g. bc-ai-it-mrc
     os.environ["WANDB_PROJECT"] = "채워주세요" # 프로젝트 명 e.g. T2211_dev
+
     training_args.report_to = ["wandb"]
     training_args.run_name = model_args.model_name_or_path # 프로젝트 내 모델 run 이름 ex) [ㅇㅇㅇ]klue/roberta-base
 
@@ -81,11 +81,7 @@ def main():
 
     # AutoConfig를 이용하여 pretrained model 과 tokenizer를 불러옵니다.
     # argument로 원하는 모델 이름을 설정하면 옵션을 바꿀 수 있습니다.
-    config = AutoConfig.from_pretrained(
-        model_args.config_name
-        if model_args.config_name is not None
-        else model_args.model_name_or_path,
-    )
+
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.tokenizer_name
         if model_args.tokenizer_name is not None
@@ -95,11 +91,23 @@ def main():
         # rust version이 비교적 속도가 빠릅니다.
         use_fast=True,
     )
-    model = AutoModelForQuestionAnswering.from_pretrained(
-        model_args.model_name_or_path,
-        from_tf=bool(".ckpt" in model_args.model_name_or_path),
-        config=config,
-    )
+
+    if model_args.model_type == 'default':
+        config = AutoConfig.from_pretrained(
+            model_args.config_name
+            if model_args.config_name is not None
+            else model_args.model_name_or_path,
+        )
+
+        model = AutoModelForQuestionAnswering.from_pretrained(
+            model_args.model_name_or_path,
+            from_tf=bool(".ckpt" in model_args.model_name_or_path),
+            config=config,
+        )
+    elif model_args.model_type == 'custom':
+        model = custom_model.CustomModelForQuestionAnswering() # conv-based custom model
+    else:
+        raise ValueError('[ Model Type Not Found ] 해당하는 모델 유형이 없습니다.')
 
     print(
         type(training_args),

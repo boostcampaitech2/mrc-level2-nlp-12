@@ -1,15 +1,7 @@
-"""
-Open-Domain Question Answering 을 수행하는 inference 코드 입니다.
-
-대부분의 로직은 train.py 와 비슷하나 retrieval, predict 부분이 추가되어 있습니다.
-"""
-
-
 import logging
 import sys
-from typing import Callable, List, Dict, NoReturn, Tuple
-
 import numpy as np
+import torch
 
 from datasets import (
     load_metric,
@@ -22,7 +14,7 @@ from datasets import (
 )
 
 from transformers import AutoConfig, AutoModelForQuestionAnswering, AutoTokenizer
-
+from typing import Callable, List, Dict, NoReturn, Tuple
 from transformers import (
     DataCollatorWithPadding,
     EvalPrediction,
@@ -33,21 +25,20 @@ from transformers import (
 
 from utils_qa import postprocess_qa_predictions, check_no_error
 from trainer_qa import QuestionAnsweringTrainer
-from .retrieval.sparse.tfidf import TfidfRetriever
+
+from reader.conv import custom_model
+from retrieval.dfr import dfr
+from retrieval.st import st
+# from .retrieval.sparse.tfidf import TfidfRetriever
 
 from arguments import (
     ModelArguments,
     DataTrainingArguments,
 )
 
-
 logger = logging.getLogger(__name__)
 
-
 def main():
-    # 가능한 arguments 들은 ./arguments.py 나 transformer package 안의 src/transformers/training_args.py 에서 확인 가능합니다.
-    # --help flag 를 실행시켜서 확인할 수 도 있습니다.
-
     parser = HfArgumentParser(
         (ModelArguments, DataTrainingArguments, TrainingArguments)
     )
@@ -76,22 +67,31 @@ def main():
 
     # AutoConfig를 이용하여 pretrained model 과 tokenizer를 불러옵니다.
     # argument로 원하는 모델 이름을 설정하면 옵션을 바꿀 수 있습니다.
-    config = AutoConfig.from_pretrained(
-        model_args.config_name
-        if model_args.config_name
-        else model_args.model_name_or_path,
-    )
+
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.tokenizer_name
         if model_args.tokenizer_name
         else model_args.model_name_or_path,
         use_fast=True,
     )
-    model = AutoModelForQuestionAnswering.from_pretrained(
-        model_args.model_name_or_path,
-        from_tf=bool(".ckpt" in model_args.model_name_or_path),
-        config=config,
-    )
+
+    if model_args.model_type == 'default':
+        config = AutoConfig.from_pretrained(
+            model_args.config_name
+            if model_args.config_name
+            else model_args.model_name_or_path,
+        )
+
+        model = AutoModelForQuestionAnswering.from_pretrained(
+            model_args.model_name_or_path,
+            from_tf=bool(".ckpt" in model_args.model_name_or_path),
+            config=config,
+        )
+    elif model_args.model_type == 'custom':
+        model = custom_model.CustomModelForQuestionAnswering() # conv-based custom model
+        model.load_state_dict(torch.load('/opt/ml/code/models/roberta_conv_sum_st/pytorch_model.bin'), strict=False) # {your_path}
+    else:
+        raise ValueError('[ Model Type Not Found ] 해당하는 모델 유형이 없습니다.')
 
     # True일 경우 : run passage retrieval
     if data_args.eval_retrieval:
@@ -128,11 +128,13 @@ def run_retrieval(
     elif data_args.retriever_type == "ES_BM25":
         retriever = None
     elif data_args.retriever_type == "ES_DFR":
-        retriever = None
+        retriever = dfr.DFRRetriever()
+        retriever._proc_init()
     elif data_args.retriever_type == "DPR":
         retriever = None
     elif data_args.retriever_type == "ST":
-        retriever = None
+        retriever = st.STRetriever()
+        retriever._proc_init()
     elif data_args.retriever_type == "HYBRID":
         retriever = None
 
