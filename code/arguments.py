@@ -14,6 +14,12 @@ class ModelArguments:
             "help": "Path to pretrained model or model identifier from huggingface.co/models"
         },
     )
+    best_model: str = field(
+        default="./models/best_model",
+        metadata={
+            "help": "Path to best model"
+        },
+    )
     config_name: Optional[str] = field(
         default=None,
         metadata={
@@ -90,3 +96,12 @@ class DataTrainingArguments:
     use_faiss: bool = field(
         default=False, metadata={"help": "Whether to build with faiss"}
     )
+    retriever_type: str = field(
+        default="TFIDF",
+        metadata={
+            "help": "Retriever type to use. Choose one of "
+            "\"TFIDF\" / \"BM25\" / \"ES_BM25\" / \"ES_DFR\" / \"DPR\" / \"ST\" / \"HYBRID\"."
+        },
+    )
+
+    

@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+import wandb
 
 from typing import List, Callable, NoReturn, NewType, Any
 import dataclasses
@@ -15,14 +16,10 @@ from transformers import (
     TrainingArguments,
     set_seed,
 )
-
-from tokenizers import Tokenizer
-from tokenizers.models import WordPiece
+from transformers.trainer_utils import IntervalStrategy
 
 from utils_qa import postprocess_qa_predictions, check_no_error
 from trainer_qa import QuestionAnsweringTrainer
-from retrieval import SparseRetrieval
-
 from arguments import (
     ModelArguments,
     DataTrainingArguments,
@@ -45,6 +42,23 @@ def main():
     # [참고] argument를 manual하게 수정하고 싶은 경우에 아래와 같은 방식을 사용할 수 있습니다
     # training_args.per_device_train_batch_size = 4
     # print(training_args.per_device_train_batch_size)
+    training_args.evaluation_strategy=IntervalStrategy.STEPS
+    training_args.logging_steps=250
+    training_args.eval_steps=250
+    training_args.save_total_limit=3
+    training_args.load_best_model_at_end=True
+    training_args.metric_for_best_model='em'
+
+    # wandb 설정
+    # entity는 wandb login으로 자동 설정됩니다. entity를 변경하고 싶으시면 relogin하면 됩니다!
+    os.environ["WANDB_ENTITY"] = "채워주세요" # 프로젝트 명 e.g. bc-ai-it-mrc
+    os.environ["WANDB_PROJECT"] = "채워주세요" # 프로젝트 명 e.g. T2211_dev
+    training_args.report_to = ["wandb"]
+    training_args.run_name = model_args.model_name_or_path # 프로젝트 내 모델 run 이름 ex) [ㅇㅇㅇ]klue/roberta-base
+
+    print(f'====================================')
+    print(training_args)
+    print(f'====================================')
 
     print(f"model is from {model_args.model_name_or_path}")
     print(f"data is from {data_args.dataset_name}")
@@ -98,6 +112,8 @@ def main():
     # do_train mrc model 혹은 do_eval mrc model
     if training_args.do_train or training_args.do_eval:
         run_mrc(data_args, training_args, model_args, datasets, tokenizer, model)
+    
+    wandb.finish()
 
 
 def run_mrc(
@@ -332,7 +348,7 @@ def run_mrc(
         else:
             checkpoint = None
         train_result = trainer.train(resume_from_checkpoint=checkpoint)
-        trainer.save_model()  # Saves the tokenizer too for easy upload
+        trainer.save_model(model_args.best_model)  # Saves the tokenizer too for easy upload
 
         metrics = train_result.metrics
         metrics["train_samples"] = len(train_dataset)

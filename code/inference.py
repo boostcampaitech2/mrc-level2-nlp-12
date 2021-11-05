@@ -33,7 +33,7 @@ from transformers import (
 
 from utils_qa import postprocess_qa_predictions, check_no_error
 from trainer_qa import QuestionAnsweringTrainer
-from retrieval import SparseRetrieval
+from .retrieval.sparse.tfidf import TfidfRetriever
 
 from arguments import (
     ModelArguments,
@@ -95,7 +95,7 @@ def main():
 
     # True일 경우 : run passage retrieval
     if data_args.eval_retrieval:
-        datasets = run_sparse_retrieval(
+        datasets = run_retrieval(
             tokenizer.tokenize,
             datasets,
             training_args,
@@ -107,7 +107,7 @@ def main():
         run_mrc(data_args, training_args, model_args, datasets, tokenizer, model)
 
 
-def run_sparse_retrieval(
+def run_retrieval(
     tokenize_fn: Callable[[str], List[str]],
     datasets: DatasetDict,
     training_args: TrainingArguments,
@@ -117,12 +117,27 @@ def run_sparse_retrieval(
 ) -> DatasetDict:
 
     # Query에 맞는 Passage들을 Retrieval 합니다.
-    retriever = SparseRetrieval(
-        tokenize_fn=tokenize_fn, data_path=data_path, context_path=context_path
-    )
-    retriever.get_sparse_embedding()
+    #TFIDF | BM25 | ES_BM25 | ES_DFR | DPR | ST | HYBRID"
+    if data_args.retriever_type == "TFIDF":
+        retriever = TfidfRetriever(
+            tokenize_fn=tokenize_fn, data_path=data_path, context_path=context_path
+        )
+        retriever.get_sparse_embedding()
+    elif data_args.retriever_type == "BM25":
+        retriever = None
+    elif data_args.retriever_type == "ES_BM25":
+        retriever = None
+    elif data_args.retriever_type == "ES_DFR":
+        retriever = None
+    elif data_args.retriever_type == "DPR":
+        retriever = None
+    elif data_args.retriever_type == "ST":
+        retriever = None
+    elif data_args.retriever_type == "HYBRID":
+        retriever = None
 
-    if data_args.use_faiss:
+    
+    if data_args.retriever_type == "TFIDF" and data_args.use_faiss:
         retriever.build_faiss(num_clusters=data_args.num_clusters)
         df = retriever.retrieve_faiss(
             datasets["validation"], topk=data_args.top_k_retrieval
