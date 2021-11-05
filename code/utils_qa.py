@@ -322,6 +322,26 @@ def check_no_error(
     datasets: DatasetDict,
     tokenizer,
 ) -> Tuple[Any, int]:
+    """
+        Check errors in last checkpoint, tokenizer and max_length.
+        If there is an error, it will raise an error.
+
+        Args:
+            data_args (:obj:`DataTrainingArguments`):
+                Arguments pertaining to what data we are going to input our model for training and eval.
+            training_args (:obj:`TrainingArguments`):
+                Arguments we use in our example scripts which relate to the training loop itself.
+            datasets (:obj:`DatasetDict`):
+                Train-Valid dataset
+            tokenizer (:obj:`AutoTokenizer.from_pretrained`):
+                Ttokenizer classes of the pretrained model vocabulary.
+
+        Returns:
+            last_checkpoint, max_seq_length (:obj:`Tuple[Any, int]`):
+                If there isn't error, return last checkpoint and max sequence length.
+
+
+    """
 
     # last checkpoint 찾기.
     last_checkpoint = None
