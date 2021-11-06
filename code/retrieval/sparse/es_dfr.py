@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from typing import Optional
 from elasticsearch import Elasticsearch
 from tqdm import tqdm
-from .. import preprocess
+from utils.preprocess import Preprocess
 
 
 @contextmanager
@@ -53,11 +53,11 @@ class DFRRetriever():
         )
 
         # optional
-        # preprocessing = preprocess.Preprocess(self.contexts, ['russian', 'arabic'])
-        # preprocessing._proc_preprocessing()
-        # self.contexts = preprocessing.sents
-        # print('--- Preprocessed Contexts Lengths ---')
-        # print(len(self.contexts))
+        preprocessing = Preprocess(self.contexts, ['russian', 'arabic'])
+        preprocessing._proc_preprocessing()
+        self.contexts = preprocessing.sents
+        print('--- Preprocessed Contexts Lengths ---')
+        print(len(self.contexts))
 
     def _set_index_setting(self):
         '''

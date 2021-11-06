@@ -17,8 +17,8 @@ from transformers import (
 from transformers.trainer_utils import IntervalStrategy
 
 from reader.conv import custom_model
-from utils_qa import postprocess_qa_predictions, check_no_error
-from trainer_qa import QuestionAnsweringTrainer
+from utils.utils_qa import postprocess_qa_predictions, check_no_error
+from utils.trainer_qa import QuestionAnsweringTrainer
 from arguments import (
     ModelArguments,
     DataTrainingArguments,

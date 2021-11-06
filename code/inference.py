@@ -23,11 +23,11 @@ from transformers import (
     set_seed,
 )
 
-from utils_qa import postprocess_qa_predictions, check_no_error
-from trainer_qa import QuestionAnsweringTrainer
+from utils.utils_qa import postprocess_qa_predictions, check_no_error
+from utils.trainer_qa import QuestionAnsweringTrainer
 from reader.conv import custom_model
-from retrieval.dfr import dfr
-from retrieval.st import st
+from retrieval.sparse import es_dfr
+from retrieval.dense import st
 from retrieval.sparse import TfidfRetriever
 
 from arguments import (
@@ -127,7 +127,7 @@ def run_retrieval(
     elif data_args.retriever_type == "ES_BM25":
         retriever = None
     elif data_args.retriever_type == "ES_DFR":
-        retriever = dfr.DFRRetriever()
+        retriever = es_dfr.DFRRetriever()
         retriever._proc_init()
     elif data_args.retriever_type == "DPR":
         retriever = None
