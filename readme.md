@@ -115,13 +115,14 @@ python inference.py --top_k_retrieval 30
 
 ### Model
 
-- `klue/roberta-large` 
-- `klue/roberta-base`
+- klue/roberta-large
+
+- klue/roberta-base
 
 ### Optimizer & Loss
 
 - Optimizer : AdamW
-- & Loss : Cross Entropy
+- Loss : Cross Entropy
 
 ### Wandb for Tracking
 
