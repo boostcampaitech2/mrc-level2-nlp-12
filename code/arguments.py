@@ -32,10 +32,18 @@ class ModelArguments:
             "help": "Pretrained tokenizer name or path if not the same as model_name"
         },
     )
+    model_type: str = field(
+        default="default",
+        metadata={
+            "help": "Model type to use. Choose one of "
+                    "\"custom\" / \"default\"."
+        },
+    )
+
 
 
 @dataclass
-class DataModelArguments:
+class DataTrainingArguments:
     """
     Arguments pertaining to what data we are going to input our model for training and eval.
     """
@@ -104,4 +112,3 @@ class DataModelArguments:
         },
     )
 
-    
