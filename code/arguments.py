@@ -41,7 +41,6 @@ class ModelArguments:
     )
 
 
-
 @dataclass
 class DataTrainingArguments:
     """
@@ -112,3 +111,85 @@ class DataTrainingArguments:
         },
     )
 
+
+@dataclass
+class MaskedLanguageModelArguments:
+    """
+    Arguments pertaining to MLM.
+    """
+
+    model_name: str = field(
+        default="klue/bert-base",#"monologg/kobigbird-bert-base",#"kykim/bert-kor-base",#"klue/roberta-large",
+        metadata={
+            "help": "model identifier from huggingface.co/models"
+        },
+    )
+    do_whole_word_mask: bool = field(
+        default=False,
+        metadata={
+            "help": "If set to true, whole words are masked."
+        },
+    )
+    mlm_probability: Optional[float] = field(
+        default=0.15,
+        metadata={
+            "help": "Probability that a word is replaced by a [MASK] token."
+        },
+    )
+    do_validation: bool = field(
+        default=True,
+        metadata={
+            "help": "If set to False, train/validation data will be merged into train data."
+        },
+    )
+    max_seq_length: int = field(
+        default=40,
+        metadata={
+            "help": "The maximum total input sequence length after tokenization. Sequences longer "
+            "than this will be truncated, sequences shorter will be padded."
+        }
+    )
+    data_dir: Optional[str] = field(
+        default="../data/train_dataset",
+        metadata={
+            "help": "training data directory name."
+        },
+    )
+    mlm_dir: Optional[str] = field(
+        default="./models/pretrained_mlm",
+        metadata={
+            "help": "training output directory name."
+        },
+    )
+
+
+@dataclass
+class EnsembleArguments:
+    """
+    Arguments pertaining to ensemble.
+    """
+
+    nbest_dir: str = field(
+        default="./ensemble/nbests",
+        metadata={
+            "help": "Prediction output directory. (default: ./ensemble/nbests)"
+        }
+    )
+    output_dir: str = field(
+        default="./ensemble/predictions",
+        metadata={
+            "help": "Prediction output directory. (default: ./ensemble/predictions)"
+        }
+    )
+    do_hard_voting: bool = field(
+        default=True,
+        metadata={
+            "help": "Activate hard voting. Set False if you do not want to do hard voting."
+        }
+    )
+    do_soft_voting: bool = field(
+        default=True,
+        metadata={
+            "help": "Activate soft voting. Set False if you do not want to do soft voting."
+        }
+    )

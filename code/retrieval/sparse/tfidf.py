@@ -3,6 +3,7 @@ import json
 import time
 import faiss
 import pickle
+import argparse
 import numpy as np
 import pandas as pd
 
@@ -18,7 +19,8 @@ from datasets import (
     load_from_disk,
     concatenate_datasets,
 )
-
+from transformers import AutoTokenizer
+    
 
 @contextmanager
 def timer(name):
@@ -394,9 +396,6 @@ class TfidfRetriever:
 
 
 if __name__ == "__main__":
-
-    import argparse
-
     parser = argparse.ArgumentParser(description="")
     parser.add_argument(
         "--dataset_name", metavar="./data/train_dataset", type=str, help=""
@@ -415,25 +414,23 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Test sparse
+    # test sparse
     org_dataset = load_from_disk(args.dataset_name)
     full_ds = concatenate_datasets(
         [
             org_dataset["train"].flatten_indices(),
             org_dataset["validation"].flatten_indices(),
         ]
-    )  # train dev 를 합친 4192 개 질문에 대해 모두 테스트
+    )  # merge train and dev dataset into one.
     print("*" * 40, "query dataset", "*" * 40)
     print(full_ds)
-
-    from transformers import AutoTokenizer
 
     tokenizer = AutoTokenizer.from_pretrained(
         args.model_name_or_path,
         use_fast=False,
     )
 
-    retriever = SparseRetrieval(
+    retriever = TfidfRetriever(
         tokenize_fn=tokenizer.tokenize,
         data_path=args.data_path,
         context_path=args.context_path,

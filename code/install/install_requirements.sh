@@ -11,3 +11,8 @@ pip install git+https://github.com/haven-jeon/PyKoSpacing.git
 
 # faiss install (if you want to)
 pip install faiss-gpu
+pip install wandb
+pip install simple-parsing
+pip install rank_bm25
+pip install elasticsearch
+pip install farm-haystack

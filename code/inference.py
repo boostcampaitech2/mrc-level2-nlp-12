@@ -28,7 +28,12 @@ from utils.trainer_qa import QuestionAnsweringTrainer
 from reader.conv import custom_model
 from retrieval.sparse import es_dfr
 from retrieval.dense import st
-from retrieval.sparse import TfidfRetriever
+from retrieval.sparse import (
+    TfidfRetriever,
+    Bm25Retriever,
+    EsBm25Retriever,
+)
+
 
 from arguments import (
     ModelArguments,
@@ -123,9 +128,9 @@ def run_retrieval(
         )
         retriever.get_sparse_embedding()
     elif data_args.retriever_type == "BM25":
-        retriever = None
+        retriever = Bm25Retriever(tokenize_fn=tokenize_fn)
     elif data_args.retriever_type == "ES_BM25":
-        retriever = None
+        retriever = EsBm25Retriever()
     elif data_args.retriever_type == "ES_DFR":
         retriever = es_dfr.DFRRetriever()
         retriever._proc_init()
