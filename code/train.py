@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 def main():
+
     # 가능한 arguments 들은 ./arguments.py 나 transformer package 안의 src/transformers/training_args.py 에서 확인 가능합니다.
     # --help flag 를 실행시켜서 확인할 수 도 있습니다.
 
@@ -131,8 +132,30 @@ def run_mrc(
     datasets: DatasetDict,
     tokenizer,
     model,
-) -> NoReturn:
+)-> NoReturn:
+    """
+    Perform Machine Reading Comprehension(MRC) task
+    
+    Args:
+        data_args (:obj:`DataTrainingArguments`):
+            Arguments pertaining to what data we are going to input our model for training and eval.
+        
+        training_args (:obj:`TrainingArguments`):
+            Arguments we use in our example scripts which relate to the training loop itself.
+        
+        model_args (:obj:`ModelArguments`):
+            Arguments pertaining to which model/config/tokenizer we are going to fine-tune from.
 
+        datasets (:obj:`DatasetDict`):
+            train-valid dataset
+
+        tokenizer (:obj:`AutoTokenizer.from_pretrained`):
+            tokenizer classes of the pretrained model vocabulary.
+
+        model (:obj:`AutoModelForQuestionAnswering.from_pretrained`):
+            model classes of the question answering from a pretrained model.
+
+    """
     # dataset을 전처리합니다.
     # training과 evaluation에서 사용되는 전처리는 아주 조금 다른 형태를 가집니다.
     if training_args.do_train:
@@ -155,6 +178,17 @@ def run_mrc(
 
     # Train preprocessing / 전처리를 진행합니다.
     def prepare_train_features(examples):
+        """
+        preprocessing data for training
+
+        Args:
+            examples (:obj:`DatasetDict`):
+                train data to be preprocessed
+
+        Returns:
+            tokenized_examples(:obj:`DatasetDict`):
+                preprocessed train data
+        """
         # truncation과 padding(length가 짧을때만)을 통해 toknization을 진행하며, stride를 이용하여 overflow를 유지합니다.
         # 각 example들은 이전의 context와 조금씩 겹치게됩니다.
         tokenized_examples = tokenizer(
@@ -247,6 +281,17 @@ def run_mrc(
 
     # Validation preprocessing
     def prepare_validation_features(examples):
+        """
+        preprocessing data for validation
+
+        Args:
+            examples (:obj:`DatasetDict`):
+                validation data to be preprocessed
+
+        Returns:
+            tokenized_examples(:obj:`DatasetDict`):
+                preprocessed validation data
+        """
         # truncation과 padding(length가 짧을때만)을 통해 toknization을 진행하며, stride를 이용하여 overflow를 유지합니다.
         # 각 example들은 이전의 context와 조금씩 겹치게됩니다.
         tokenized_examples = tokenizer(
@@ -305,6 +350,26 @@ def run_mrc(
 
     # Post-processing:
     def post_processing_function(examples, features, predictions, training_args):
+        """
+        Post-processes the prediction value of the qa model
+
+        Args:
+            examples (:obj:`DatasetDict`):
+                data to be post-processing
+
+            features ([type]): [description]
+
+            predictions (:obj:`Tuple[np.ndarray, np.ndarray]`):
+                model prediction value
+                two arrays representing start logits and the end logits
+                
+            training_args (:obj:`TrainingArguments`):
+                Arguments we use in our example scripts which relate to the training loop itself.
+
+        Returns:
+            EvalPrediction :
+                post-processed the prediction value of the qa model
+        """
         # Post-processing: start logits과 end logits을 original context의 정답과 match시킵니다.
         predictions = postprocess_qa_predictions(
             examples=examples,
@@ -332,6 +397,16 @@ def run_mrc(
     metric = load_metric("squad")
 
     def compute_metrics(p: EvalPrediction):
+        """
+        Compute the metrics
+
+        Args:
+            p (:obj:`EvalPrediction`):
+                prediction value
+
+        Returns:
+            metric
+        """
         return metric.compute(predictions=p.predictions, references=p.label_ids)
 
     # Trainer 초기화

@@ -25,11 +25,10 @@ from transformers import (
 
 from utils_qa import postprocess_qa_predictions, check_no_error
 from trainer_qa import QuestionAnsweringTrainer
-
 from reader.conv import custom_model
 from retrieval.dfr import dfr
 from retrieval.st import st
-# from .retrieval.sparse.tfidf import TfidfRetriever
+from retrieval.sparse import TfidfRetriever
 
 from arguments import (
     ModelArguments,
