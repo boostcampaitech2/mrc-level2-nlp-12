@@ -26,27 +26,24 @@ from transformers import (
 from utils.utils_qa import postprocess_qa_predictions, check_no_error
 from utils.trainer_qa import QuestionAnsweringTrainer
 from reader.conv import custom_model
-from retrieval.sparse import es_dfr
-from retrieval.dense import st, dpr
 from retrieval.sparse import (
+    es_dfr,
     TfidfRetriever,
     Bm25Retriever,
     EsBm25Retriever,
 )
-
-
+from retrieval.dense import (
+    st,
+    dpr,
+) 
+from retrieval.hybrid import HybridRetriever
 from arguments import (
     ModelArguments,
     DataTrainingArguments,
     DPRArguments
-
 )
 
-
-from arguments import ModelArguments, DataTrainingArguments, DPRArguments
-
 logger = logging.getLogger(__name__)
-
 
 def main():
     parser = HfArgumentParser(
@@ -150,6 +147,7 @@ def run_retrieval(
     """ 
     # Query에 맞는 Passage들을 Retrieval 합니다.
     # TFIDF | BM25 | ES_BM25 | ES_DFR | DPR | ST | HYBRID"
+    retriever = None
     if data_args.retriever_type == "TFIDF":
         retriever = TfidfRetriever(
             tokenize_fn=tokenize_fn, data_path=data_path, context_path=context_path
@@ -169,7 +167,10 @@ def run_retrieval(
         retriever = st.STRetriever()
         retriever._proc_init()
     elif data_args.retriever_type == "HYBRID":
-        retriever = None
+        if data_args.retriever_type == "DPR":
+            retriever = HybridRetriever(tokenize_fn=tokenize_fn, dpr_args=dpr_args)
+        retriever = HybridRetriever(tokenize_fn=tokenize_fn)
+        
 
     if data_args.retriever_type == "TFIDF" and data_args.use_faiss:
         retriever.build_faiss(num_clusters=data_args.num_clusters)

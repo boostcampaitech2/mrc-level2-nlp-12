@@ -188,7 +188,9 @@ class EnsembleArguments:
         }
     )
 
- class DPRArguments:
+
+@dataclass
+class DPRArguments:
     model_checkpoint: str = field(
         default="klue/bert-base", metadata={"help": "A model name of DPR encoder"}
     )

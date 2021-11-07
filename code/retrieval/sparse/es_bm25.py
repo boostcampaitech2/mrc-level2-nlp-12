@@ -50,6 +50,8 @@ class EsBm25Retriever:
         self.contexts = wiki_df['text'].tolist()
         self.document_store = None
 
+        print(f"Lengths of unique contexts : {len(self.contexts)}")
+
         if Elasticsearch('localhost:9200').indices.exists(index):
             self.document_store = ElasticsearchDocumentStore(
                 host="localhost",
@@ -225,8 +227,6 @@ class EsBm25Retriever:
 
         with timer("query elasticsearch"):
             _, doc_indices = self._get_relevant_doc_bulk(query_dataset["question"], topk)
-
-        print(doc_indices[0])
 
         for idx, example in enumerate(tqdm(query_dataset, desc="results to df: ")):
             tmp = {
