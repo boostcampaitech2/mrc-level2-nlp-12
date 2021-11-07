@@ -130,5 +130,5 @@ python inference.py --top_k_retrieval 30
 
 ### Model Architecture
 
-![모델 구조](https://user-images.githubusercontent.com/48538655/140604596-952cb7dd-bb30-4604-8bed-1b1981447293.PNG)
+![모델 구조](https://user-images.githubusercontent.com/48538655/140632232-3695e797-ee44-4c90-aed3-70afa654e47c.PNG)
 
