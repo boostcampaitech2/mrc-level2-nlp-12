@@ -15,10 +15,7 @@ class ModelArguments:
         },
     )
     best_model: str = field(
-        default="./models/best_model",
-        metadata={
-            "help": "Path to best model"
-        },
+        default="./models/best_model", metadata={"help": "Path to best model"},
     )
     config_name: Optional[str] = field(
         default=None,
@@ -34,10 +31,7 @@ class ModelArguments:
     )
     model_type: str = field(
         default="default",
-        metadata={
-            "help": "Model type to use. Choose one of "
-                    "\"custom\" / \"default\"."
-        },
+        metadata={"help": "Model type to use. Choose one of " '"custom" / "default".'},
     )
 
 
@@ -107,7 +101,7 @@ class DataTrainingArguments:
         default="TFIDF",
         metadata={
             "help": "Retriever type to use. Choose one of "
-            "\"TFIDF\" / \"BM25\" / \"ES_BM25\" / \"ES_DFR\" / \"DPR\" / \"ST\" / \"HYBRID\"."
+            '"TFIDF" / "BM25" / "ES_BM25" / "ES_DFR" / "DPR" / "ST" / "HYBRID".'
         },
     )
 
@@ -192,4 +186,37 @@ class EnsembleArguments:
         metadata={
             "help": "Activate soft voting. Set False if you do not want to do soft voting."
         }
+    )
+
+ class DPRArguments:
+    model_checkpoint: str = field(
+        default="klue/bert-base", metadata={"help": "A model name of DPR encoder"}
+    )
+    q_encoder_path: str = field(
+        default="./q_encoder", metadata={"help": "A path of question encoder"},
+    )
+    p_encoder_path: str = field(
+        default="./p_encoder", metadata={"help": "A path of passage encoder"}
+    )
+    use_wandb: bool = field(default=True, metadata={"help": "Whether to use wandb"})
+    eval_topk: Optional[int] = field(default=50, metadata={"help": "evaluation top k"})
+    best_save: bool = field(
+        default=True, metadata={"help": "Whether to save at best accuracy"}
+    )
+    project_name: str = field(default="tmp", metadata={"help": "wandb project name"})
+    entity_name: str = field(default="tmp", metadata={"help": "wandb entity name"})
+    retriever_run_name: str = field(default="tmp", metadata={"help": "wandb run name"})
+    num_neg: Optional[int] = field(
+        default=12, metadata={"help": "A number of negative in-batch"}
+    )
+    lr: Optional[float] = field(default=3e-5, metadata={"help": "Learning Rate"})
+    train_batch_size: Optional[int] = field(
+        default=2, metadata={"help": "Train Batch Size"}
+    )
+    eval_batch_size: Optional[int] = field(
+        default=8, metadata={"help": "Eval Batch Size"}
+    )
+    epochs: Optional[int] = field(default=10, metadata={"help": "Epochs"})
+    dpr_weight_decay: float = field(
+        default=0.01, metadata={"help": "Weight decay for AdamW if we apply some."}
     )
