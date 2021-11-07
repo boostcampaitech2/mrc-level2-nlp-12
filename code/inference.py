@@ -35,6 +35,14 @@ from retrieval.sparse import (
 )
 
 
+from arguments import (
+    ModelArguments,
+    DataTrainingArguments,
+    DPRArguments
+
+)
+
+
 from arguments import ModelArguments, DataTrainingArguments, DPRArguments
 
 logger = logging.getLogger(__name__)
