@@ -133,7 +133,21 @@ def run_retrieval(
     context_path: str = "wikipedia_documents.json",
     dpr_args: DPRArguments = None,
 ) -> DatasetDict:
+    """
+    wikipedia_documents.json 파일을 불러와서 retrieval을 실행하는 함수.
 
+    Args:
+        tokenize_fn (Callable[[str], List[str]]): 토크나이즈 함수, tokenizer가 아닌 tokenizer.tokenize를 인자로 받아야함.
+        datasets (DatasetDict): DatasetDict 타입의 데이터셋
+        training_args (TrainingArguments): 학습에 필요한 arguments
+        data_args (DataTrainingArguments): 데이터에 관련된 arguments
+        data_path (str, optional): 데이터셋의 경로. Defaults to "../data".
+        context_path (str, optional): retrieval을 실행할 파일 경로. Defaults to "wikipedia_documents.json".
+        dpr_args: (DPRArguments): DPR 관련된 arguments. Defaults to 'None'
+        
+    Returns:
+        DatasetDict: retrieve 된 데이터셋을 리턴.
+    """ 
     # Query에 맞는 Passage들을 Retrieval 합니다.
     # TFIDF | BM25 | ES_BM25 | ES_DFR | DPR | ST | HYBRID"
     if data_args.retriever_type == "TFIDF":
@@ -204,7 +218,17 @@ def run_mrc(
     tokenizer,
     model,
 ) -> NoReturn:
+    """Reader 역할을 하는 MRC 모델을 실행하는 함수. 
 
+    Args:
+        data_args (DataTrainingArguments): 데이터 관련 arguments
+        training_args (TrainingArguments): 훈련에 필요한 arguments
+        model_args (ModelArguments): 모델 설정과 관련된 arguments
+        datasets (DatasetDict): MRC에 사용되는 데이터셋
+        tokenizer ([type]): 토크나이저
+        model ([type]): 학습된 모델
+
+    """ 
     # eval 혹은 prediction에서만 사용함
     column_names = datasets["validation"].column_names
 
@@ -223,6 +247,14 @@ def run_mrc(
 
     # Validation preprocessing / 전처리를 진행합니다.
     def prepare_validation_features(examples):
+        """MRC 모델에 맞게 데이터를 전처리하는 함수 
+
+        Args:
+            examples: 데이터셋
+
+        Returns:
+            토크나이즈된 데이터셋
+        """
         # truncation과 padding(length가 짧을때만)을 통해 toknization을 진행하며, stride를 이용하여 overflow를 유지합니다.
         # 각 example들은 이전의 context와 조금씩 겹치게됩니다.
         tokenized_examples = tokenizer(
@@ -285,6 +317,17 @@ def run_mrc(
         predictions: Tuple[np.ndarray, np.ndarray],
         training_args: TrainingArguments,
     ) -> EvalPrediction:
+        """MRC 모델에서 나온 output을 후처리해주는 함수
+
+        Args:
+            examples: 데이터셋
+            features: column 종류
+            predictions (Tuple[np.ndarray, np.ndarray]): 에측값을 튜플 형태로 받아옴
+            training_args (TrainingArguments): 학습에 필요한 arguments
+
+        Returns:
+            EvalPrediction: do_predict 모드와 do_eval 모드에 맞는 Format의 output
+        """
         # Post-processing: start logits과 end logits을 original context의 정답과 match시킵니다.
         predictions = postprocess_qa_predictions(
             examples=examples,
