@@ -27,21 +27,29 @@ from utils.utils_qa import postprocess_qa_predictions, check_no_error
 from utils.trainer_qa import QuestionAnsweringTrainer
 from reader.conv import custom_model
 from retrieval.sparse import es_dfr
-from retrieval.dense import st
-from retrieval.sparse import TfidfRetriever
-
-from arguments import (
-    ModelArguments,
-    DataTrainingArguments,
+from retrieval.dense import st, dpr
+from retrieval.sparse import (
+    TfidfRetriever,
+    Bm25Retriever,
+    EsBm25Retriever,
 )
+
+
+from arguments import ModelArguments, DataTrainingArguments, DPRArguments
 
 logger = logging.getLogger(__name__)
 
+
 def main():
     parser = HfArgumentParser(
-        (ModelArguments, DataTrainingArguments, TrainingArguments)
+        (ModelArguments, DataTrainingArguments, TrainingArguments, DPRArguments)
     )
-    model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+    (
+        model_args,
+        data_args,
+        training_args,
+        dpr_args,
+    ) = parser.parse_args_into_dataclasses()
 
     training_args.do_train = True
 
@@ -74,7 +82,7 @@ def main():
         use_fast=True,
     )
 
-    if model_args.model_type == 'default':
+    if model_args.model_type == "default":
         config = AutoConfig.from_pretrained(
             model_args.config_name
             if model_args.config_name
@@ -86,19 +94,21 @@ def main():
             from_tf=bool(".ckpt" in model_args.model_name_or_path),
             config=config,
         )
-    elif model_args.model_type == 'custom':
-        model = custom_model.CustomModelForQuestionAnswering() # conv-based custom model
-        model.load_state_dict(torch.load('/opt/ml/code/models/roberta_conv_sum_st/pytorch_model.bin'), strict=False) # {your_path}
+    elif model_args.model_type == "custom":
+        model = (
+            custom_model.CustomModelForQuestionAnswering()
+        )  # conv-based custom model
+        model.load_state_dict(
+            torch.load("/opt/ml/code/models/roberta_conv_sum_st/pytorch_model.bin"),
+            strict=False,
+        )  # {your_path}
     else:
-        raise ValueError('[ Model Type Not Found ] 해당하는 모델 유형이 없습니다.')
+        raise ValueError("[ Model Type Not Found ] 해당하는 모델 유형이 없습니다.")
 
     # True일 경우 : run passage retrieval
     if data_args.eval_retrieval:
         datasets = run_retrieval(
-            tokenizer.tokenize,
-            datasets,
-            training_args,
-            data_args,
+            tokenizer.tokenize, datasets, training_args, data_args, dpr_args
         )
 
     # eval or predict mrc model
@@ -113,31 +123,32 @@ def run_retrieval(
     data_args: DataTrainingArguments,
     data_path: str = "../data",
     context_path: str = "wikipedia_documents.json",
+    dpr_args: DPRArguments = None,
 ) -> DatasetDict:
 
     # Query에 맞는 Passage들을 Retrieval 합니다.
-    #TFIDF | BM25 | ES_BM25 | ES_DFR | DPR | ST | HYBRID"
+    # TFIDF | BM25 | ES_BM25 | ES_DFR | DPR | ST | HYBRID"
     if data_args.retriever_type == "TFIDF":
         retriever = TfidfRetriever(
             tokenize_fn=tokenize_fn, data_path=data_path, context_path=context_path
         )
         retriever.get_sparse_embedding()
     elif data_args.retriever_type == "BM25":
-        retriever = None
+        retriever = Bm25Retriever(tokenize_fn=tokenize_fn)
     elif data_args.retriever_type == "ES_BM25":
-        retriever = None
+        retriever = EsBm25Retriever()
     elif data_args.retriever_type == "ES_DFR":
         retriever = es_dfr.DFRRetriever()
         retriever._proc_init()
     elif data_args.retriever_type == "DPR":
-        retriever = None
+        retriever = dpr.DensePassageRetrieval(dpr_args)
+        retriever.load_passage_embedding()
     elif data_args.retriever_type == "ST":
         retriever = st.STRetriever()
         retriever._proc_init()
     elif data_args.retriever_type == "HYBRID":
         retriever = None
 
-    
     if data_args.retriever_type == "TFIDF" and data_args.use_faiss:
         retriever.build_faiss(num_clusters=data_args.num_clusters)
         df = retriever.retrieve_faiss(
@@ -214,7 +225,7 @@ def run_mrc(
             stride=data_args.doc_stride,
             return_overflowing_tokens=True,
             return_offsets_mapping=True,
-            #return_token_type_ids=False, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
+            # return_token_type_ids=False, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
             padding="max_length" if data_args.pad_to_max_length else False,
         )
 
