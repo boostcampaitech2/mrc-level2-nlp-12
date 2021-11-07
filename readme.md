@@ -126,7 +126,7 @@ python inference.py --top_k_retrieval 30
 
 ### Wandb for Tracking
 
-
+![image](https://user-images.githubusercontent.com/48538655/140650312-39f8211c-6fff-469f-acd2-992baade0d7e.png)
 
 ### Model Architecture
 
