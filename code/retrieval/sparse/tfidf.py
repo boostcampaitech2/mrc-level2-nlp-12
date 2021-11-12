@@ -3,6 +3,7 @@ import json
 import time
 import faiss
 import pickle
+import argparse
 import numpy as np
 import pandas as pd
 
@@ -18,7 +19,8 @@ from datasets import (
     load_from_disk,
     concatenate_datasets,
 )
-
+from transformers import AutoTokenizer
+    
 
 @contextmanager
 def timer(name):
@@ -27,7 +29,7 @@ def timer(name):
     print(f"[{name}] done in {time.time() - t0:.3f} s")
 
 
-class SparseRetrieval:
+class TfidfRetriever:
     def __init__(
         self,
         tokenize_fn,
@@ -260,12 +262,17 @@ class SparseRetrieval:
         result = query_vec * self.p_embedding.T
         if not isinstance(result, np.ndarray):
             result = result.toarray()
-        doc_scores = []
-        doc_indices = []
-        for i in range(result.shape[0]):
-            sorted_result = np.argsort(result[i, :])[::-1]
-            doc_scores.append(result[i, :][sorted_result].tolist()[:k])
-            doc_indices.append(sorted_result.tolist()[:k])
+        
+        # https://stages.ai/competitions/77/discussion/talk/post/730
+        # baseline 6.7secs --> modified 2.2secs!
+        doc_scores = np.partition(result, -k)[:, -k:][:, ::-1]
+        ind = np.argsort(doc_scores, axis=-1)[:, ::-1]
+        doc_scores = np.sort(doc_scores, axis=-1)[:, ::-1]
+        doc_indices = np.argpartition(result, -k)[:, -k:][:, ::-1]
+        r, c = ind.shape
+        ind = ind + np.tile(np.arange(r).reshape(-1, 1), (1, c)) * c
+        doc_indices = doc_indices.ravel()[ind].reshape(r, c)
+
         return doc_scores, doc_indices
 
     def retrieve_faiss(
@@ -389,9 +396,6 @@ class SparseRetrieval:
 
 
 if __name__ == "__main__":
-
-    import argparse
-
     parser = argparse.ArgumentParser(description="")
     parser.add_argument(
         "--dataset_name", metavar="./data/train_dataset", type=str, help=""
@@ -410,25 +414,23 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Test sparse
+    # test sparse
     org_dataset = load_from_disk(args.dataset_name)
     full_ds = concatenate_datasets(
         [
             org_dataset["train"].flatten_indices(),
             org_dataset["validation"].flatten_indices(),
         ]
-    )  # train dev 를 합친 4192 개 질문에 대해 모두 테스트
+    )  # merge train and dev dataset into one.
     print("*" * 40, "query dataset", "*" * 40)
     print(full_ds)
-
-    from transformers import AutoTokenizer
 
     tokenizer = AutoTokenizer.from_pretrained(
         args.model_name_or_path,
         use_fast=False,
     )
 
-    retriever = SparseRetrieval(
+    retriever = TfidfRetriever(
         tokenize_fn=tokenizer.tokenize,
         data_path=args.data_path,
         context_path=args.context_path,

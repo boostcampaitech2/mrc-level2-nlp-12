@@ -1,15 +1,7 @@
-"""
-Open-Domain Question Answering 을 수행하는 inference 코드 입니다.
-
-대부분의 로직은 train.py 와 비슷하나 retrieval, predict 부분이 추가되어 있습니다.
-"""
-
-
 import logging
 import sys
-from typing import Callable, List, Dict, NoReturn, Tuple
-
 import numpy as np
+import torch
 
 from datasets import (
     load_metric,
@@ -22,7 +14,7 @@ from datasets import (
 )
 
 from transformers import AutoConfig, AutoModelForQuestionAnswering, AutoTokenizer
-
+from typing import Callable, List, Dict, NoReturn, Tuple
 from transformers import (
     DataCollatorWithPadding,
     EvalPrediction,
@@ -31,27 +23,38 @@ from transformers import (
     set_seed,
 )
 
-from utils_qa import postprocess_qa_predictions, check_no_error
-from trainer_qa import QuestionAnsweringTrainer
-from retrieval import SparseRetrieval
-
+from utils.utils_qa import postprocess_qa_predictions, check_no_error
+from utils.trainer_qa import QuestionAnsweringTrainer
+from reader.conv import custom_model
+from retrieval.sparse import (
+    es_dfr,
+    TfidfRetriever,
+    Bm25Retriever,
+    EsBm25Retriever,
+)
+from retrieval.dense import (
+    st,
+    dpr,
+) 
+from retrieval.hybrid import HybridRetriever
 from arguments import (
     ModelArguments,
     DataTrainingArguments,
+    DPRArguments
 )
-
 
 logger = logging.getLogger(__name__)
 
-
 def main():
-    # 가능한 arguments 들은 ./arguments.py 나 transformer package 안의 src/transformers/training_args.py 에서 확인 가능합니다.
-    # --help flag 를 실행시켜서 확인할 수 도 있습니다.
-
     parser = HfArgumentParser(
-        (ModelArguments, DataTrainingArguments, TrainingArguments)
+        (ModelArguments, DataTrainingArguments, TrainingArguments, DPRArguments)
     )
-    model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+    (
+        model_args,
+        data_args,
+        training_args,
+        dpr_args,
+    ) = parser.parse_args_into_dataclasses()
 
     training_args.do_train = True
 
@@ -76,30 +79,41 @@ def main():
 
     # AutoConfig를 이용하여 pretrained model 과 tokenizer를 불러옵니다.
     # argument로 원하는 모델 이름을 설정하면 옵션을 바꿀 수 있습니다.
-    config = AutoConfig.from_pretrained(
-        model_args.config_name
-        if model_args.config_name
-        else model_args.model_name_or_path,
-    )
+
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.tokenizer_name
         if model_args.tokenizer_name
         else model_args.model_name_or_path,
         use_fast=True,
     )
-    model = AutoModelForQuestionAnswering.from_pretrained(
-        model_args.model_name_or_path,
-        from_tf=bool(".ckpt" in model_args.model_name_or_path),
-        config=config,
-    )
+
+    if model_args.model_type == "default":
+        config = AutoConfig.from_pretrained(
+            model_args.config_name
+            if model_args.config_name
+            else model_args.model_name_or_path,
+        )
+
+        model = AutoModelForQuestionAnswering.from_pretrained(
+            model_args.model_name_or_path,
+            from_tf=bool(".ckpt" in model_args.model_name_or_path),
+            config=config,
+        )
+    elif model_args.model_type == "custom":
+        model = (
+            custom_model.CustomModelForQuestionAnswering()
+        )  # conv-based custom model
+        model.load_state_dict(
+            torch.load("/opt/ml/code/models/roberta_conv_sum_st/pytorch_model.bin"),
+            strict=False,
+        )  # {your_path}
+    else:
+        raise ValueError("[ Model Type Not Found ] 해당하는 모델 유형이 없습니다.")
 
     # True일 경우 : run passage retrieval
     if data_args.eval_retrieval:
-        datasets = run_sparse_retrieval(
-            tokenizer.tokenize,
-            datasets,
-            training_args,
-            data_args,
+        datasets = run_retrieval(
+            tokenizer.tokenize, datasets, training_args, data_args, dpr_args
         )
 
     # eval or predict mrc model
@@ -107,22 +121,58 @@ def main():
         run_mrc(data_args, training_args, model_args, datasets, tokenizer, model)
 
 
-def run_sparse_retrieval(
+def run_retrieval(
     tokenize_fn: Callable[[str], List[str]],
     datasets: DatasetDict,
     training_args: TrainingArguments,
     data_args: DataTrainingArguments,
     data_path: str = "../data",
     context_path: str = "wikipedia_documents.json",
+    dpr_args: DPRArguments = None,
 ) -> DatasetDict:
+    """
+    wikipedia_documents.json 파일을 불러와서 retrieval을 실행하는 함수.
 
+    Args:
+        tokenize_fn (Callable[[str], List[str]]): 토크나이즈 함수, tokenizer가 아닌 tokenizer.tokenize를 인자로 받아야함.
+        datasets (DatasetDict): DatasetDict 타입의 데이터셋
+        training_args (TrainingArguments): 학습에 필요한 arguments
+        data_args (DataTrainingArguments): 데이터에 관련된 arguments
+        data_path (str, optional): 데이터셋의 경로. Defaults to "../data".
+        context_path (str, optional): retrieval을 실행할 파일 경로. Defaults to "wikipedia_documents.json".
+        dpr_args: (DPRArguments): DPR 관련된 arguments. Defaults to 'None'
+        
+    Returns:
+        DatasetDict: retrieve 된 데이터셋을 리턴.
+    """ 
     # Query에 맞는 Passage들을 Retrieval 합니다.
-    retriever = SparseRetrieval(
-        tokenize_fn=tokenize_fn, data_path=data_path, context_path=context_path
-    )
-    retriever.get_sparse_embedding()
+    # TFIDF | BM25 | ES_BM25 | ES_DFR | DPR | ST | HYBRID"
+    retriever = None
+    if data_args.retriever_type == "TFIDF":
+        retriever = TfidfRetriever(
+            tokenize_fn=tokenize_fn, data_path=data_path, context_path=context_path
+        )
+        retriever.get_sparse_embedding()
+    elif data_args.retriever_type == "BM25":
+        retriever = Bm25Retriever(tokenize_fn=tokenize_fn)
+    elif data_args.retriever_type == "ES_BM25":
+        retriever = EsBm25Retriever()
+    elif data_args.retriever_type == "ES_DFR":
+        retriever = es_dfr.DFRRetriever()
+        retriever._proc_init()
+    elif data_args.retriever_type == "DPR":
+        retriever = dpr.DensePassageRetrieval(dpr_args)
+        retriever.load_passage_embedding()
+    elif data_args.retriever_type == "ST":
+        retriever = st.STRetriever()
+        retriever._proc_init()
+    elif data_args.retriever_type == "HYBRID":
+        if data_args.retriever_type == "DPR":
+            retriever = HybridRetriever(tokenize_fn=tokenize_fn, dpr_args=dpr_args)
+        retriever = HybridRetriever(tokenize_fn=tokenize_fn)
+        
 
-    if data_args.use_faiss:
+    if data_args.retriever_type == "TFIDF" and data_args.use_faiss:
         retriever.build_faiss(num_clusters=data_args.num_clusters)
         df = retriever.retrieve_faiss(
             datasets["validation"], topk=data_args.top_k_retrieval
@@ -169,7 +219,17 @@ def run_mrc(
     tokenizer,
     model,
 ) -> NoReturn:
+    """Reader 역할을 하는 MRC 모델을 실행하는 함수. 
 
+    Args:
+        data_args (DataTrainingArguments): 데이터 관련 arguments
+        training_args (TrainingArguments): 훈련에 필요한 arguments
+        model_args (ModelArguments): 모델 설정과 관련된 arguments
+        datasets (DatasetDict): MRC에 사용되는 데이터셋
+        tokenizer ([type]): 토크나이저
+        model ([type]): 학습된 모델
+
+    """ 
     # eval 혹은 prediction에서만 사용함
     column_names = datasets["validation"].column_names
 
@@ -188,6 +248,14 @@ def run_mrc(
 
     # Validation preprocessing / 전처리를 진행합니다.
     def prepare_validation_features(examples):
+        """MRC 모델에 맞게 데이터를 전처리하는 함수 
+
+        Args:
+            examples: 데이터셋
+
+        Returns:
+            토크나이즈된 데이터셋
+        """
         # truncation과 padding(length가 짧을때만)을 통해 toknization을 진행하며, stride를 이용하여 overflow를 유지합니다.
         # 각 example들은 이전의 context와 조금씩 겹치게됩니다.
         tokenized_examples = tokenizer(
@@ -198,7 +266,7 @@ def run_mrc(
             stride=data_args.doc_stride,
             return_overflowing_tokens=True,
             return_offsets_mapping=True,
-            #return_token_type_ids=False, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
+            # return_token_type_ids=False, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
             padding="max_length" if data_args.pad_to_max_length else False,
         )
 
@@ -250,6 +318,17 @@ def run_mrc(
         predictions: Tuple[np.ndarray, np.ndarray],
         training_args: TrainingArguments,
     ) -> EvalPrediction:
+        """MRC 모델에서 나온 output을 후처리해주는 함수
+
+        Args:
+            examples: 데이터셋
+            features: column 종류
+            predictions (Tuple[np.ndarray, np.ndarray]): 에측값을 튜플 형태로 받아옴
+            training_args (TrainingArguments): 학습에 필요한 arguments
+
+        Returns:
+            EvalPrediction: do_predict 모드와 do_eval 모드에 맞는 Format의 output
+        """
         # Post-processing: start logits과 end logits을 original context의 정답과 match시킵니다.
         predictions = postprocess_qa_predictions(
             examples=examples,

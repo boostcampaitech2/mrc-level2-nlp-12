@@ -14,6 +14,9 @@ class ModelArguments:
             "help": "Path to pretrained model or model identifier from huggingface.co/models"
         },
     )
+    best_model: str = field(
+        default="./models/best_model", metadata={"help": "Path to best model"},
+    )
     config_name: Optional[str] = field(
         default=None,
         metadata={
@@ -25,6 +28,10 @@ class ModelArguments:
         metadata={
             "help": "Pretrained tokenizer name or path if not the same as model_name"
         },
+    )
+    model_type: str = field(
+        default="default",
+        metadata={"help": "Model type to use. Choose one of " '"custom" / "default".'},
     )
 
 
@@ -89,4 +96,129 @@ class DataTrainingArguments:
     )
     use_faiss: bool = field(
         default=False, metadata={"help": "Whether to build with faiss"}
+    )
+    retriever_type: str = field(
+        default="TFIDF",
+        metadata={
+            "help": "Retriever type to use. Choose one of "
+            '"TFIDF" / "BM25" / "ES_BM25" / "ES_DFR" / "DPR" / "ST" / "HYBRID".'
+        },
+    )
+
+
+@dataclass
+class MaskedLanguageModelArguments:
+    """
+    Arguments pertaining to MLM.
+    """
+
+    model_name: str = field(
+        default="klue/bert-base",#"monologg/kobigbird-bert-base",#"kykim/bert-kor-base",#"klue/roberta-large",
+        metadata={
+            "help": "model identifier from huggingface.co/models"
+        },
+    )
+    do_whole_word_mask: bool = field(
+        default=False,
+        metadata={
+            "help": "If set to true, whole words are masked."
+        },
+    )
+    mlm_probability: Optional[float] = field(
+        default=0.15,
+        metadata={
+            "help": "Probability that a word is replaced by a [MASK] token."
+        },
+    )
+    do_validation: bool = field(
+        default=True,
+        metadata={
+            "help": "If set to False, train/validation data will be merged into train data."
+        },
+    )
+    max_seq_length: int = field(
+        default=40,
+        metadata={
+            "help": "The maximum total input sequence length after tokenization. Sequences longer "
+            "than this will be truncated, sequences shorter will be padded."
+        }
+    )
+    data_dir: Optional[str] = field(
+        default="../data/train_dataset",
+        metadata={
+            "help": "training data directory name."
+        },
+    )
+    mlm_dir: Optional[str] = field(
+        default="./models/pretrained_mlm",
+        metadata={
+            "help": "training output directory name."
+        },
+    )
+
+
+@dataclass
+class EnsembleArguments:
+    """
+    Arguments pertaining to ensemble.
+    """
+
+    nbest_dir: str = field(
+        default="./ensemble/nbests",
+        metadata={
+            "help": "Prediction output directory. (default: ./ensemble/nbests)"
+        }
+    )
+    output_dir: str = field(
+        default="./ensemble/predictions",
+        metadata={
+            "help": "Prediction output directory. (default: ./ensemble/predictions)"
+        }
+    )
+    do_hard_voting: bool = field(
+        default=True,
+        metadata={
+            "help": "Activate hard voting. Set False if you do not want to do hard voting."
+        }
+    )
+    do_soft_voting: bool = field(
+        default=True,
+        metadata={
+            "help": "Activate soft voting. Set False if you do not want to do soft voting."
+        }
+    )
+
+
+@dataclass
+class DPRArguments:
+    model_checkpoint: str = field(
+        default="klue/bert-base", metadata={"help": "A model name of DPR encoder"}
+    )
+    q_encoder_path: str = field(
+        default="./q_encoder", metadata={"help": "A path of question encoder"},
+    )
+    p_encoder_path: str = field(
+        default="./p_encoder", metadata={"help": "A path of passage encoder"}
+    )
+    use_wandb: bool = field(default=True, metadata={"help": "Whether to use wandb"})
+    eval_topk: Optional[int] = field(default=50, metadata={"help": "evaluation top k"})
+    best_save: bool = field(
+        default=True, metadata={"help": "Whether to save at best accuracy"}
+    )
+    project_name: str = field(default="tmp", metadata={"help": "wandb project name"})
+    entity_name: str = field(default="tmp", metadata={"help": "wandb entity name"})
+    retriever_run_name: str = field(default="tmp", metadata={"help": "wandb run name"})
+    num_neg: Optional[int] = field(
+        default=12, metadata={"help": "A number of negative in-batch"}
+    )
+    lr: Optional[float] = field(default=3e-5, metadata={"help": "Learning Rate"})
+    train_batch_size: Optional[int] = field(
+        default=2, metadata={"help": "Train Batch Size"}
+    )
+    eval_batch_size: Optional[int] = field(
+        default=8, metadata={"help": "Eval Batch Size"}
+    )
+    epochs: Optional[int] = field(default=10, metadata={"help": "Epochs"})
+    dpr_weight_decay: float = field(
+        default=0.01, metadata={"help": "Weight decay for AdamW if we apply some."}
     )

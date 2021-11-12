@@ -1,13 +1,12 @@
 import logging
 import os
 import sys
+import wandb
 
-from typing import List, Callable, NoReturn, NewType, Any
-import dataclasses
-from datasets import load_metric, load_from_disk, Dataset, DatasetDict
+from typing import NoReturn
+from datasets import load_metric, load_from_disk, DatasetDict
 
 from transformers import AutoConfig, AutoModelForQuestionAnswering, AutoTokenizer
-
 from transformers import (
     DataCollatorWithPadding,
     EvalPrediction,
@@ -15,14 +14,11 @@ from transformers import (
     TrainingArguments,
     set_seed,
 )
+from transformers.trainer_utils import IntervalStrategy
 
-from tokenizers import Tokenizer
-from tokenizers.models import WordPiece
-
-from utils_qa import postprocess_qa_predictions, check_no_error
-from trainer_qa import QuestionAnsweringTrainer
-from retrieval import SparseRetrieval
-
+from reader.conv import custom_model
+from utils.utils_qa import postprocess_qa_predictions, check_no_error
+from utils.trainer_qa import QuestionAnsweringTrainer
 from arguments import (
     ModelArguments,
     DataTrainingArguments,
@@ -33,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 def main():
+
     # 가능한 arguments 들은 ./arguments.py 나 transformer package 안의 src/transformers/training_args.py 에서 확인 가능합니다.
     # --help flag 를 실행시켜서 확인할 수 도 있습니다.
 
@@ -45,6 +42,24 @@ def main():
     # [참고] argument를 manual하게 수정하고 싶은 경우에 아래와 같은 방식을 사용할 수 있습니다
     # training_args.per_device_train_batch_size = 4
     # print(training_args.per_device_train_batch_size)
+    training_args.evaluation_strategy=IntervalStrategy.STEPS
+    training_args.logging_steps=250
+    training_args.eval_steps=250
+    training_args.save_total_limit=3
+    training_args.load_best_model_at_end=True
+    training_args.metric_for_best_model='em'
+
+    # wandb 설정
+    # entity는 wandb login으로 자동 설정됩니다. entity를 변경하고 싶으시면 relogin하면 됩니다!
+    os.environ["WANDB_ENTITY"] = "채워주세요" # 프로젝트 명 e.g. bc-ai-it-mrc
+    os.environ["WANDB_PROJECT"] = "채워주세요" # 프로젝트 명 e.g. T2211_dev
+
+    training_args.report_to = ["wandb"]
+    training_args.run_name = model_args.model_name_or_path # 프로젝트 내 모델 run 이름 ex) [ㅇㅇㅇ]klue/roberta-base
+
+    print(f'====================================')
+    print(training_args)
+    print(f'====================================')
 
     print(f"model is from {model_args.model_name_or_path}")
     print(f"data is from {data_args.dataset_name}")
@@ -67,11 +82,7 @@ def main():
 
     # AutoConfig를 이용하여 pretrained model 과 tokenizer를 불러옵니다.
     # argument로 원하는 모델 이름을 설정하면 옵션을 바꿀 수 있습니다.
-    config = AutoConfig.from_pretrained(
-        model_args.config_name
-        if model_args.config_name is not None
-        else model_args.model_name_or_path,
-    )
+
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.tokenizer_name
         if model_args.tokenizer_name is not None
@@ -81,11 +92,23 @@ def main():
         # rust version이 비교적 속도가 빠릅니다.
         use_fast=True,
     )
-    model = AutoModelForQuestionAnswering.from_pretrained(
-        model_args.model_name_or_path,
-        from_tf=bool(".ckpt" in model_args.model_name_or_path),
-        config=config,
-    )
+
+    if model_args.model_type == 'default':
+        config = AutoConfig.from_pretrained(
+            model_args.config_name
+            if model_args.config_name is not None
+            else model_args.model_name_or_path,
+        )
+
+        model = AutoModelForQuestionAnswering.from_pretrained(
+            model_args.model_name_or_path,
+            from_tf=bool(".ckpt" in model_args.model_name_or_path),
+            config=config,
+        )
+    elif model_args.model_type == 'custom':
+        model = custom_model.CustomModelForQuestionAnswering() # conv-based custom model
+    else:
+        raise ValueError('[ Model Type Not Found ] 해당하는 모델 유형이 없습니다.')
 
     print(
         type(training_args),
@@ -98,6 +121,8 @@ def main():
     # do_train mrc model 혹은 do_eval mrc model
     if training_args.do_train or training_args.do_eval:
         run_mrc(data_args, training_args, model_args, datasets, tokenizer, model)
+    
+    wandb.finish()
 
 
 def run_mrc(
@@ -107,8 +132,30 @@ def run_mrc(
     datasets: DatasetDict,
     tokenizer,
     model,
-) -> NoReturn:
+)-> NoReturn:
+    """
+    Perform Machine Reading Comprehension(MRC) task
+    
+    Args:
+        data_args (:obj:`DataTrainingArguments`):
+            Arguments pertaining to what data we are going to input our model for training and eval.
+        
+        training_args (:obj:`TrainingArguments`):
+            Arguments we use in our example scripts which relate to the training loop itself.
+        
+        model_args (:obj:`ModelArguments`):
+            Arguments pertaining to which model/config/tokenizer we are going to fine-tune from.
 
+        datasets (:obj:`DatasetDict`):
+            train-valid dataset
+
+        tokenizer (:obj:`AutoTokenizer.from_pretrained`):
+            tokenizer classes of the pretrained model vocabulary.
+
+        model (:obj:`AutoModelForQuestionAnswering.from_pretrained`):
+            model classes of the question answering from a pretrained model.
+
+    """
     # dataset을 전처리합니다.
     # training과 evaluation에서 사용되는 전처리는 아주 조금 다른 형태를 가집니다.
     if training_args.do_train:
@@ -131,6 +178,17 @@ def run_mrc(
 
     # Train preprocessing / 전처리를 진행합니다.
     def prepare_train_features(examples):
+        """
+        preprocessing data for training
+
+        Args:
+            examples (:obj:`DatasetDict`):
+                train data to be preprocessed
+
+        Returns:
+            tokenized_examples(:obj:`DatasetDict`):
+                preprocessed train data
+        """
         # truncation과 padding(length가 짧을때만)을 통해 toknization을 진행하며, stride를 이용하여 overflow를 유지합니다.
         # 각 example들은 이전의 context와 조금씩 겹치게됩니다.
         tokenized_examples = tokenizer(
@@ -223,6 +281,17 @@ def run_mrc(
 
     # Validation preprocessing
     def prepare_validation_features(examples):
+        """
+        preprocessing data for validation
+
+        Args:
+            examples (:obj:`DatasetDict`):
+                validation data to be preprocessed
+
+        Returns:
+            tokenized_examples(:obj:`DatasetDict`):
+                preprocessed validation data
+        """
         # truncation과 padding(length가 짧을때만)을 통해 toknization을 진행하며, stride를 이용하여 overflow를 유지합니다.
         # 각 example들은 이전의 context와 조금씩 겹치게됩니다.
         tokenized_examples = tokenizer(
@@ -281,6 +350,26 @@ def run_mrc(
 
     # Post-processing:
     def post_processing_function(examples, features, predictions, training_args):
+        """
+        Post-processes the prediction value of the qa model
+
+        Args:
+            examples (:obj:`DatasetDict`):
+                data to be post-processing
+
+            features ([type]): [description]
+
+            predictions (:obj:`Tuple[np.ndarray, np.ndarray]`):
+                model prediction value
+                two arrays representing start logits and the end logits
+                
+            training_args (:obj:`TrainingArguments`):
+                Arguments we use in our example scripts which relate to the training loop itself.
+
+        Returns:
+            EvalPrediction :
+                post-processed the prediction value of the qa model
+        """
         # Post-processing: start logits과 end logits을 original context의 정답과 match시킵니다.
         predictions = postprocess_qa_predictions(
             examples=examples,
@@ -308,6 +397,16 @@ def run_mrc(
     metric = load_metric("squad")
 
     def compute_metrics(p: EvalPrediction):
+        """
+        Compute the metrics
+
+        Args:
+            p (:obj:`EvalPrediction`):
+                prediction value
+
+        Returns:
+            metric
+        """
         return metric.compute(predictions=p.predictions, references=p.label_ids)
 
     # Trainer 초기화
@@ -332,7 +431,7 @@ def run_mrc(
         else:
             checkpoint = None
         train_result = trainer.train(resume_from_checkpoint=checkpoint)
-        trainer.save_model()  # Saves the tokenizer too for easy upload
+        trainer.save_model(model_args.best_model)  # Saves the tokenizer too for easy upload
 
         metrics = train_result.metrics
         metrics["train_samples"] = len(train_dataset)
