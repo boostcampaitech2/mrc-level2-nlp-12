@@ -123,7 +123,7 @@ def main():
 
     ##### Training arguments
     training_args.output_dir=f"{mlm_args.mlm_dir}/" + mlm_args.model_name.replace('/', '_')
-    training_args.logging_dir=f"{mlm_args.mlm_dir}/logs"
+    training_args.logging_dir=f"{training_args.output_dir}/logs"
     training_args.num_train_epochs=5
     training_args.learning_rate=5e-05
     training_args.evaluation_strategy="steps" if MLM_dev_dataset is not None else "no"
@@ -172,8 +172,7 @@ def main():
     trainer.train()
 
     print("TRAINING RESULT SAVING...")
-    trainer.save_model(mlm_args.output_dir)
-    tokenizer.save_pretrained(mlm_args.output_dir)
+    trainer.save_model()
 
     print("TRAINING FINISHED!")
 
