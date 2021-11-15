@@ -1,9 +1,8 @@
-# Team AI-it Repo for MRC tasks
+# Team AI-it Repo for ODQA(KLUE-MRC) task
 
-## Contributor
+## Contributors
 
 - 김재현/T2050
-
 - 박진영/T2096
 - 안성민/T2127
 - 양재욱/T2130
@@ -15,18 +14,14 @@
 
 - [Experiment Log](https://jet-rook-fae.notion.site/MRC-d897b0cab1854936ba1d0e027e39c71c)
 
-## Hardware
+## Wrap-up Report
 
-- GPU : V100
+- [Wrap-up Report](https://jet-rook-fae.notion.site/Wrap-up-Report-ODQA-Team-AI-it-2e1c2f63d8384a278db593abde80697b)
 
-- Language : Python
-- Develop tools : Jupyter Notebook, VSCode, Pycharm, Google Colab
-
-## File List
+## Project Tree
 
 ```
 code
-  ├── README.md
   ├── install
   │   └── install_requirements.sh
   ├── reader
@@ -36,99 +31,34 @@ code
   │       └── custom_model.py
   ├── retrieval
   │   ├── __init__.py
-  │	  ├── sparse
-  │	  │	  ├── __init__.py
-  │	  │   ├── tfidf.py
-  │	  │   ├── es_dfr.py
-  │	  │   └── es_bm25.py
+  │   ├── hybrid.py
+  │   ├── sparse
+  │   │   ├── __init__.py
+  │   │   ├── bm25.py
+  │   │   ├── es_bm25.py
+  │   │   ├── es_dfr.py
+  │   │   └── tfidf.py
   │   └── dense
-  │	  	  ├── __init__.py
-  │	  	  ├── st.py
-  │	  	  └── DPR.py
+  │       ├── __init__.py
+  │       ├── st.py
+  │       └── dpr
+  │           ├── __init__.py
+  │           ├── dpr_dataset.py
+  │           ├── dpr_model.py
+  │           ├── dpr_retrieve.py
+  │           └── dpr_train_utils.py
   ├── utils
   │    ├── __init__.py
+  │    ├── pypreprocess.py
   │    ├── train_qa.py
   │    ├── utils_qa.py
-  │    └── preprocess.py
+  │    └── wiki_split.py
   ├── arguments.py
+  ├── dpr_trainer.py
+  ├── ensemble.py
   ├── inference.py
-  └── train.py
-data
-  ├── train_dataset
-  │    ├── train
-  │    │   ├── dataset.arrow
-  │    │   ├── dataset_info.json
-  │    │   ├── indices.arrow
-  │    │   └── state.json
-  │    ├── validation
-  │    │   ├── dataset.arrow
-  │    │   ├── dataset_info.json
-  │    │   ├── indices.arrow
-  │    │   └── state.json
-  │    └── dataset_dict.json
-  ├── test_dataset
-  │    ├── validation
-  │    │   ├── dataset.arrow
-  │    │   ├── dataset_info.json
-  │    │   ├── indices.arrow
-  │    │   └── state.json
-  │    └── dataset_dict.json
-  └── wikipedia_documents.json
+  ├── readme.md
+  ├── train.py
+  └── train_mlm.py
 ```
-
-## Getting Started
-
-### Dependencies
-
-- datasets==1.5.0
-- transformers==4.5.0
-- tqdm==4.41.1
-- pandas==1.1.4
-- scikit-learn=0.24.1
-- konlpy==0.5.2
-
-아래 스크립트를 실행하여 requirements 설치를 진행할 수 있습니다.
-
-```
-bash ./code/install/install_requirements.sh
-```
-
-### Training
-
-```
-python train.py --[args] [value]
-python train.py --model klue-roberta-large
-```
-
-### Inference
-
-```
-python inference.py --[args] [value]
-python inference.py --top_k_retrieval 30
-```
-
-## Apply
-
-### Dataset
-
-- Train: Given MRC dataset
-
-### Model
-
-- klue/roberta-large
-
-- klue/roberta-base
-
-### Optimizer & Loss
-
-- Optimizer : AdamW
-- Loss : Cross Entropy
-
-### Wandb for Tracking
-
-![image](https://user-images.githubusercontent.com/48538655/140650312-39f8211c-6fff-469f-acd2-992baade0d7e.png)
-
-### Model Architecture
-
-![모델 구조](https://user-images.githubusercontent.com/48538655/140632232-3695e797-ee44-4c90-aed3-70afa654e47c.PNG)
 
