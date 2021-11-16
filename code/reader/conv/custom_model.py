@@ -1,7 +1,7 @@
 from torch.nn import CrossEntropyLoss
 from transformers import RobertaModel, AutoConfig
 from transformers.modeling_outputs import QuestionAnsweringModelOutput
-from cnn import *
+from reader.conv.cnn import *
 
 # https://huggingface.co/transformers/_modules/transformers/models/bert/modeling_bert.html#BertForQuestionAnswering
 # https://huggingface.co/transformers/_modules/transformers/models/roberta/modeling_roberta.html#RobertaForQuestionAnswering
