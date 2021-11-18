@@ -191,6 +191,9 @@ class EnsembleArguments:
 
 @dataclass
 class DPRArguments:
+    train_data_dir: str = field(
+        default="../data/train_dataset", metadata={"help": "A path of train data"}
+    )
     model_checkpoint: str = field(
         default="klue/bert-base", metadata={"help": "A model name of DPR encoder"}
     )
